@@ -3,7 +3,7 @@
    ============================================ */
 
 // ⚠️ เปลี่ยน URL นี้เป็น Google Apps Script Web App URL ของคุณ
-const API_URL = 'https://script.google.com/macros/s/AKfycbwWUZhm_rPIEIpIijvyFnt_rDt4TMgaRetfNNYmm6DSuygCKBqbqQZ9IcrBJ2jf3U8A/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzRucyUO11lMTYCa8Ma5WPqkUsGYmeoF8jd_7LJ10oKElS1JEaOJBYTX6gLJINqQSIF/exec';
 
 // ── Cache System ──
 const apiCache = {

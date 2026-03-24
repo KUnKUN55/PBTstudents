@@ -826,7 +826,8 @@ function handleAdminGetStudentDetail(body) {
   var user = users.filter(function(u) { return u.user_id === targetUserId; })[0];
   if (!user) return { status: 'error', message: 'ไม่พบนักเรียน' };
 
-  var allScoresResult = handleAdminGetAllScores(body);
+  var adminBody = { user_id: body.user_id, role: 'admin' };
+  var allScoresResult = handleAdminGetAllScores(adminBody);
   var userScores = [];
   if (allScoresResult.status === 'success') {
     userScores = allScoresResult.scores.filter(function(s) { return s.user_id === targetUserId; });
