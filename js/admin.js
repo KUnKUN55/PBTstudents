@@ -40,6 +40,7 @@ function getGrade(pct) {
 }
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function getId(id) { return document.getElementById(id); } // Replaced conflicting $$
 
 // ============================================
 // ADMIN DASHBOARD
@@ -50,7 +51,7 @@ async function loadAdminDashboard() {
     if (data.status !== 'success') throw new Error(data.message);
     var s = data.stats;
 
-    document.getElementById('adminStatsGrid').innerHTML =
+    getId('adminStatsGrid').innerHTML =
       statCard('👥', s.total_students, 'นักเรียน') +
       statCard('📚', s.total_subjects, 'วิชา') +
       statCard('🟡', s.pending_grading, 'รอตรวจ') +
@@ -59,7 +60,7 @@ async function loadAdminDashboard() {
     // Student summary table
     var students = data.students || [];
     if (students.length === 0) {
-      document.getElementById('adminStudentSummary').innerHTML = '<div class="empty-state"><p>ยังไม่มีนักเรียน</p></div>';
+      getId('adminStudentSummary').innerHTML = '<div class="empty-state"><p>ยังไม่มีนักเรียน</p></div>';
     } else {
       var html = '<div class="table-container"><table class="table"><thead><tr>' +
         '<th>ชื่อ</th><th>คะแนนเฉลี่ย</th><th>เกรด</th><th>งานที่ทำ</th><th>ดู</th></tr></thead><tbody>';
@@ -72,13 +73,13 @@ async function loadAdminDashboard() {
           '<td><button class="btn btn-primary btn-sm" onclick="viewStudentDetail(\'' + st.user_id + '\')" style="font-size:.8rem">📋 ดู</button></td></tr>';
       }
       html += '</tbody></table></div>';
-      document.getElementById('adminStudentSummary').innerHTML = html;
+      getId('adminStudentSummary').innerHTML = html;
     }
 
     // Recent activity
     var logs = data.recent_activity || [];
     if (logs.length === 0) {
-      document.getElementById('adminRecentActivity').innerHTML = '<div class="empty-state"><p>ยังไม่มีกิจกรรม</p></div>';
+      getId('adminRecentActivity').innerHTML = '<div class="empty-state"><p>ยังไม่มีกิจกรรม</p></div>';
     } else {
       var lhtml = '<div class="card">';
       for (var j = 0; j < Math.min(logs.length, 10); j++) {
@@ -88,10 +89,10 @@ async function loadAdminDashboard() {
           '<span style="float:right;color:var(--text-secondary);font-size:.75rem">' + formatDate(l.timestamp) + '</span></div>';
       }
       lhtml += '</div>';
-      document.getElementById('adminRecentActivity').innerHTML = lhtml;
+      getId('adminRecentActivity').innerHTML = lhtml;
     }
   } catch (err) {
-    document.getElementById('adminStatsGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>⚠️ ' + (err.message || 'โหลดไม่สำเร็จ') + '</p></div>';
+    getId('adminStatsGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1"><p>⚠️ ' + (err.message || 'โหลดไม่สำเร็จ') + '</p></div>';
   }
 }
 
@@ -117,7 +118,7 @@ async function loadAdminData() {
 function populateSubjectDropdowns() {
   var ids = ['lessonSubject', 'assignSubject'];
   for (var d = 0; d < ids.length; d++) {
-    var sel = document.getElementById(ids[d]);
+    var sel = getId(ids[d]);
     if (!sel) continue;
     sel.innerHTML = '<option value="">-- เลือกวิชา --</option>';
     for (var i = 0; i < cachedSubjects.length; i++) {
@@ -128,7 +129,7 @@ function populateSubjectDropdowns() {
 }
 
 async function loadAssignmentDropdown() {
-  var sel = document.getElementById('qAssignment');
+  var sel = getId('qAssignment');
   sel.innerHTML = '<option value="">-- เลือกข้อสอบ --</option>';
   cachedAssignments = [];
   for (var i = 0; i < cachedSubjects.length; i++) {
@@ -147,7 +148,7 @@ async function loadAssignmentDropdown() {
 // SUBJECTS
 // ============================================
 function renderSubjectsList(subjects) {
-  var c = document.getElementById('subjectsList');
+  var c = getId('subjectsList');
   if (subjects.length === 0) { c.innerHTML = '<div class="empty-state"><p>📭 ยังไม่มีวิชา</p></div>'; return; }
   var html = '<div class="table-container"><table class="table"><thead><tr><th>ไอคอน</th><th>ชื่อ</th><th>คำอธิบาย</th><th>บทเรียน</th><th>ข้อสอบ</th><th>จัดการ</th></tr></thead><tbody>';
   for (var i = 0; i < subjects.length; i++) {
@@ -168,8 +169,8 @@ function renderSubjectsList(subjects) {
 async function addSubject(e) {
   e.preventDefault(); var btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
   try {
-    var r = await apiAdminAddSubject({ subject_name: $$('subName').value.trim(), icon: $$('subIcon').value.trim()||'📚', color: $$('subColor').value, description: $$('subDesc').value.trim(), order_index: $$('subOrder').value });
-    if (r.status === 'success') { showToast('เพิ่มวิชาเรียบร้อย! ✅','success'); e.target.reset(); $$('subIcon').value='📚'; $$('subColor').value='#3b82f6'; loadAdminData(); }
+    var r = await apiAdminAddSubject({ subject_name: getId('subName').value.trim(), icon: getId('subIcon').value.trim()||'📚', color: getId('subColor').value, description: getId('subDesc').value.trim(), order_index: getId('subOrder').value });
+    if (r.status === 'success') { showToast('เพิ่มวิชาเรียบร้อย! ✅','success'); e.target.reset(); getId('subIcon').value='📚'; getId('subColor').value='#3b82f6'; loadAdminData(); }
     else throw new Error(r.message);
   } catch(err) { showToast(err.message||'เพิ่มไม่สำเร็จ','error'); }
   btn.disabled = false;
@@ -178,7 +179,7 @@ async function addSubject(e) {
 async function addLesson(e) {
   e.preventDefault(); var btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
   try {
-    var r = await apiAdminAddLesson({ subject_id: $$('lessonSubject').value, title: $$('lessonTitle').value.trim(), description: $$('lessonDesc').value.trim(), file_url: $$('lessonFile').value.trim(), file_type: $$('lessonFileType').value, chapter: $$('lessonChapter').value.trim(), order_index: $$('lessonOrder').value });
+    var r = await apiAdminAddLesson({ subject_id: getId('lessonSubject').value, title: getId('lessonTitle').value.trim(), description: getId('lessonDesc').value.trim(), file_url: getId('lessonFile').value.trim(), file_type: getId('lessonFileType').value, chapter: getId('lessonChapter').value.trim(), order_index: getId('lessonOrder').value });
     if (r.status === 'success') { showToast('เพิ่มบทเรียนเรียบร้อย! ✅','success'); e.target.reset(); }
     else throw new Error(r.message);
   } catch(err) { showToast(err.message||'เพิ่มไม่สำเร็จ','error'); }
@@ -188,8 +189,8 @@ async function addLesson(e) {
 async function addAssignment(e) {
   e.preventDefault(); var btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
   try {
-    var r = await apiAdminAddAssignment({ subject_id: $$('assignSubject').value, title: $$('assignTitle').value.trim(), type: $$('assignType').value, description: $$('assignDesc').value.trim(), pass_threshold: $$('assignPass').value, due_date: $$('assignDue').value });
-    if (r.status === 'success') { showToast('สร้างข้อสอบเรียบร้อย! ✅','success'); e.target.reset(); $$('assignPass').value='50'; loadAssignmentDropdown(); }
+    var r = await apiAdminAddAssignment({ subject_id: getId('assignSubject').value, title: getId('assignTitle').value.trim(), type: getId('assignType').value, description: getId('assignDesc').value.trim(), pass_threshold: getId('assignPass').value, due_date: getId('assignDue').value });
+    if (r.status === 'success') { showToast('สร้างข้อสอบเรียบร้อย! ✅','success'); e.target.reset(); getId('assignPass').value='50'; loadAssignmentDropdown(); }
     else throw new Error(r.message);
   } catch(err) { showToast(err.message||'สร้างไม่สำเร็จ','error'); }
   btn.disabled = false;
@@ -197,7 +198,7 @@ async function addAssignment(e) {
 
 // ── Question type toggle ──
 function setQType(type) {
-  $$('qType').value = type;
+  getId('qType').value = type;
   var btns = document.querySelectorAll('#qTypeToggle button');
   btns.forEach(function(b) { b.classList.remove('active'); });
   event.target.classList.add('active');
@@ -206,26 +207,26 @@ function setQType(type) {
 
 async function addQuestion(e) {
   e.preventDefault(); var btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
-  var qType = $$('qType').value;
+  var qType = getId('qType').value;
   try {
     var payload = {
-      assignment_id: $$('qAssignment').value,
-      question_text: $$('qText').value.trim(),
+      assignment_id: getId('qAssignment').value,
+      question_text: getId('qText').value.trim(),
       question_type: qType,
-      image_url: $$('qImage').value.trim(),
-      max_points: $$('qPoints').value
+      image_url: getId('qImage').value.trim(),
+      max_points: getId('qPoints').value
     };
     if (qType === 'mcq') {
-      payload.choice_a = $$('qA').value.trim();
-      payload.choice_b = $$('qB').value.trim();
-      payload.choice_c = $$('qC').value.trim();
-      payload.choice_d = $$('qD').value.trim();
-      payload.correct_answer = $$('qCorrect').value;
+      payload.choice_a = getId('qA').value.trim();
+      payload.choice_b = getId('qB').value.trim();
+      payload.choice_c = getId('qC').value.trim();
+      payload.choice_d = getId('qD').value.trim();
+      payload.correct_answer = getId('qCorrect').value;
     }
     var r = await apiAdminAddQuestion(payload);
     if (r.status === 'success') {
       showToast('เพิ่มคำถามเรียบร้อย! ✅','success');
-      $$('qText').value=''; $$('qA').value=''; $$('qB').value=''; $$('qC').value=''; $$('qD').value=''; $$('qImage').value='';
+      getId('qText').value=''; getId('qA').value=''; getId('qB').value=''; getId('qC').value=''; getId('qD').value=''; getId('qImage').value='';
     } else throw new Error(r.message);
   } catch(err) { showToast(err.message||'เพิ่มไม่สำเร็จ','error'); }
   btn.disabled = false;
@@ -240,13 +241,11 @@ async function deleteItem(sheet, field, value) {
   } catch(err) { showToast(err.message||'ลบไม่สำเร็จ','error'); }
 }
 
-function $$(id) { return document.getElementById(id); }
-
 // ============================================
 // USERS
 // ============================================
 async function loadUsers() {
-  var c = $$('usersListContainer');
+  var c = getId('usersListContainer');
   c.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>';
   try {
     var r = await apiAdminGetUsers();
@@ -273,8 +272,8 @@ async function loadUsers() {
 async function addUser(e) {
   e.preventDefault(); var btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
   try {
-    var r = await apiAdminAddUser({ name: $$('uName').value.trim(), username: $$('uUsername').value.trim(), password: $$('uPassword').value, avatar_color: $$('uColor').value });
-    if (r.status === 'success') { showToast('เพิ่มนักเรียนเรียบร้อย! ✅','success'); e.target.reset(); $$('uColor').value='#10b981'; loadUsers(); }
+    var r = await apiAdminAddUser({ name: getId('uName').value.trim(), username: getId('uUsername').value.trim(), password: getId('uPassword').value, avatar_color: getId('uColor').value });
+    if (r.status === 'success') { showToast('เพิ่มนักเรียนเรียบร้อย! ✅','success'); e.target.reset(); getId('uColor').value='#10b981'; loadUsers(); }
     else throw new Error(r.message);
   } catch(err) { showToast(err.message||'เพิ่มไม่สำเร็จ','error'); }
   btn.disabled = false;
@@ -291,15 +290,15 @@ async function deleteUser(userId) {
 
 function openPasswordChange(userId, userName) {
   currentChangeUserId = userId; currentChangeUserName = userName;
-  $$('modalUserName').textContent = userName;
-  $$('newPasswordInput').value = '';
+  getId('modalUserName').textContent = userName;
+  getId('newPasswordInput').value = '';
   openModal('passwordModal');
 }
 
 async function saveNewPassword() {
-  var pwd = $$('newPasswordInput').value.trim();
+  var pwd = getId('newPasswordInput').value.trim();
   if (!pwd || pwd.length < 4) { showToast('รหัสผ่านต้องมีอย่างน้อย 4 ตัว','error'); return; }
-  var btn = $$('btnSavePassword'); btn.disabled = true; btn.textContent = '⏳...';
+  var btn = getId('btnSavePassword'); btn.disabled = true; btn.textContent = '⏳...';
   try {
     var r = await apiAdminChangePassword({ target_user_id: currentChangeUserId, new_password: pwd });
     if (r.status === 'success') { showToast('เปลี่ยนรหัสผ่านเรียบร้อย! ✅','success'); closeModal('passwordModal'); }
@@ -313,12 +312,12 @@ async function saveNewPassword() {
 // ============================================
 async function viewStudentDetail(userId) {
   openModal('studentDetailModal');
-  $$('studentDetailContent').innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>';
+  getId('studentDetailContent').innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>';
   try {
     var r = await apiAdminGetStudentDetail(userId);
     if (r.status !== 'success') throw new Error(r.message);
     var st = r.student, stats = r.stats;
-    $$('detailStudentName').textContent = '📋 ' + st.name;
+    getId('detailStudentName').textContent = '📋 ' + st.name;
     var html = '<div class="grid-2" style="margin-bottom:var(--space-lg)">' +
       '<div class="card admin-stat"><div class="stat-num" style="font-size:1.5rem;color:' + stats.grade.color + '">' + stats.grade.letter + '</div><div class="stat-lbl">เกรดเฉลี่ย (' + stats.avg_percent + '%)</div></div>' +
       '<div class="card admin-stat"><div class="stat-num" style="font-size:1.5rem">' + stats.completed_lessons + '/' + stats.total_lessons + '</div><div class="stat-lbl">บทเรียนที่เรียน</div></div></div>';
@@ -344,17 +343,17 @@ async function viewStudentDetail(userId) {
       }
       html += '</div>';
     }
-    $$('studentDetailContent').innerHTML = html;
-  } catch(err) { $$('studentDetailContent').innerHTML = '<p>⚠️ ' + (err.message||'โหลดไม่สำเร็จ') + '</p>'; }
+    getId('studentDetailContent').innerHTML = html;
+  } catch(err) { getId('studentDetailContent').innerHTML = '<p>⚠️ ' + (err.message||'โหลดไม่สำเร็จ') + '</p>'; }
 }
 
 // ============================================
 // GRADING
 // ============================================
 async function loadSubmissions() {
-  var c = $$('submissionsContainer');
+  var c = getId('submissionsContainer');
   c.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>';
-  var filter = $$('gradingFilter').value;
+  var filter = getId('gradingFilter').value;
   try {
     var r = await apiAdminGetSubmissions(filter);
     if (r.status !== 'success') throw new Error(r.message);
@@ -386,7 +385,7 @@ function openGradingModalById(scoreId) {
   var submission = window.submissionPool[scoreId];
   if (!submission) return;
   currentGradingData = submission;
-  $$('gradingModalTitle').textContent = '✅ ตรวจ: ' + submission.user_name + ' — ' + submission.assignment_title;
+  getId('gradingModalTitle').textContent = '✅ ตรวจ: ' + submission.user_name + ' — ' + submission.assignment_title;
   var qs = submission.questions || [];
   var html = '';
   for (var i = 0; i < qs.length; i++) {
@@ -426,7 +425,7 @@ function openGradingModalById(scoreId) {
   }
 
   html += '<div style="margin-top:var(--space-lg);text-align:right"><button class="btn btn-primary" onclick="submitGrading()">💾 บันทึกคะแนน</button></div>';
-  $$('gradingModalContent').innerHTML = html;
+  getId('gradingModalContent').innerHTML = html;
   openModal('gradingModal');
 }
 
@@ -437,8 +436,8 @@ async function submitGrading() {
   for (var i = 0; i < qs.length; i++) {
     var q = qs[i];
     if (q.question_type !== 'mcq') {
-      var ptsEl = $$('grade_' + q.question_id);
-      var fbEl = $$('fb_' + q.question_id);
+      var ptsEl = getId('grade_' + q.question_id);
+      var fbEl = getId('fb_' + q.question_id);
       if (!ptsEl || ptsEl.value === '') { showToast('กรุณาให้คะแนนข้อ ' + (i+1),'error'); return; }
       grades[q.question_id] = { points: Number(ptsEl.value), feedback: fbEl ? fbEl.value.trim() : '' };
     }
@@ -458,7 +457,7 @@ async function submitGrading() {
 // ALL SCORES
 // ============================================
 async function loadAllScores() {
-  var c = $$('allScoresContainer');
+  var c = getId('allScoresContainer');
   c.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>';
   try {
     var r = await apiAdminGetAllScores();
