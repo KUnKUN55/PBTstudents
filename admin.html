@@ -57,11 +57,19 @@
         <h3 style="font-size:1.1rem;font-weight:600;margin-bottom:var(--space-lg)">➕ เพิ่มนักเรียนใหม่</h3>
         <form onsubmit="addUser(event)">
           <div class="grid-2">
-            <div class="form-group"><label class="form-label">ชื่อ-สกุล *</label><input class="form-input" id="uName" required placeholder="ชื่อ-สกุล"></div>
             <div class="form-group"><label class="form-label">Username *</label><input class="form-input" id="uUsername" required placeholder="username"></div>
+            <div class="form-group"><label class="form-label">รหัสผ่าน *</label><input class="form-input" id="uPassword" required placeholder="ขั้นต่ำ 4 ตัว" minlength="4"></div>
           </div>
           <div class="grid-2">
-            <div class="form-group"><label class="form-label">รหัสผ่าน *</label><input class="form-input" id="uPassword" required placeholder="อย่างน้อย 4 ตัว" minlength="4"></div>
+            <div class="form-group"><label class="form-label">ชื่อจริง *</label><input class="form-input" id="uFirstName" required placeholder="สมชาย"></div>
+            <div class="form-group"><label class="form-label">นามสกุล *</label><input class="form-input" id="uLastName" required placeholder="ใจดี"></div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">ชื่อเล่น</label><input class="form-input" id="uNickname" placeholder="ชาย"></div>
+            <div class="form-group"><label class="form-label">วันเกิด</label><input class="form-input" id="uDob" type="date"></div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">เลขบัตรประชาชน (13 หลัก)</label><input class="form-input" id="uCitizen" maxlength="13" pattern="\\d{13}"></div>
             <div class="form-group"><label class="form-label">สี Avatar</label><input class="form-input" id="uColor" type="color" value="#10b981"></div>
           </div>
           <button type="submit" class="btn btn-primary">➕ เพิ่มนักเรียน</button>
@@ -82,8 +90,9 @@
           <div class="form-group"><label class="form-label">คำอธิบาย</label><input class="form-input" id="subDesc" placeholder="คำอธิบายสั้นๆ"></div>
           <div class="grid-2">
             <div class="form-group"><label class="form-label">สี</label><input class="form-input" id="subColor" value="#3b82f6" type="color"></div>
-            <div class="form-group"><label class="form-label">ลำดับ</label><input class="form-input" id="subOrder" type="number" value="0"></div>
+            <div class="form-group"><label class="form-label">เกณฑ์ผ่านวิชานี้ (%)</label><input class="form-input" id="subPass" type="number" value="50" min="0" max="100"></div>
           </div>
+          <div class="form-group"><label class="form-label">ลำดับ</label><input class="form-input" id="subOrder" type="number" value="0"></div>
           <button type="submit" class="btn btn-primary">➕ เพิ่มวิชา</button>
         </form>
       </div>
@@ -218,6 +227,35 @@
           <button class="btn btn-sm" onclick="closeModal('gradingModal')" style="background:var(--glass-bg);color:var(--text-primary)">✕</button>
         </div>
         <div id="gradingModalContent"></div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="adjustScoreModal">
+      <div class="card modal-box" style="max-width:400px">
+        <h3 style="font-size:1.1rem;font-weight:600;margin-bottom:var(--space-md)">✏️ ปรับแก้คะแนนย้อนหลัง</h3>
+        <p style="margin-bottom:var(--space-md);color:var(--text-secondary);font-size:0.85rem">ผู้ใช้: <strong id="adjUserName"></strong><br>งาน: <strong id="adjTaskName"></strong></p>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">คะแนนใหม่</label>
+            <input class="form-input" id="adjNewScore" type="number" step="0.5" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">บังคับผ่าน/ไม่ผ่าน</label>
+            <select class="form-select" id="adjPassedOverride">
+              <option value="">(ตามเกณฑ์อัตโนมัติ)</option>
+              <option value="true">✅ ผ่าน</option>
+              <option value="false">❌ ไม่ผ่าน</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">เหตุผลการแก้คะแนน *</label>
+          <input class="form-input" id="adjReason" placeholder="เช่น ส่งงานเพิ่มเติม, ระบบคิดคะแนนผิด" required>
+        </div>
+        <div style="display:flex;gap:var(--space-sm);justify-content:flex-end">
+          <button class="btn" style="background:var(--glass-bg);color:var(--text-primary)" onclick="closeModal('adjustScoreModal')">ยกเลิก</button>
+          <button class="btn btn-primary" onclick="submitScoreAdjustment()" id="btnSaveAdjustment">💾 บันทึก</button>
+        </div>
       </div>
     </div>
   </div>

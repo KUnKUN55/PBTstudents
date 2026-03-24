@@ -169,8 +169,15 @@ function renderSubjectsList(subjects) {
 async function addSubject(e) {
   e.preventDefault(); var btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
   try {
-    var r = await apiAdminAddSubject({ subject_name: getId('subName').value.trim(), icon: getId('subIcon').value.trim()||'📚', color: getId('subColor').value, description: getId('subDesc').value.trim(), order_index: getId('subOrder').value });
-    if (r.status === 'success') { showToast('เพิ่มวิชาเรียบร้อย! ✅','success'); e.target.reset(); getId('subIcon').value='📚'; getId('subColor').value='#3b82f6'; loadAdminData(); }
+    var r = await apiAdminAddSubject({ 
+      subject_name: getId('subName').value.trim(), 
+      icon: getId('subIcon').value.trim()||'📚', 
+      color: getId('subColor').value, 
+      description: getId('subDesc').value.trim(), 
+      pass_threshold: getId('subPass').value,
+      order_index: getId('subOrder').value 
+    });
+    if (r.status === 'success') { showToast('เพิ่มวิชาเรียบร้อย! ✅','success'); e.target.reset(); getId('subIcon').value='📚'; getId('subColor').value='#3b82f6'; getId('subPass').value='50'; loadAdminData(); }
     else throw new Error(r.message);
   } catch(err) { showToast(err.message||'เพิ่มไม่สำเร็จ','error'); }
   btn.disabled = false;
@@ -252,12 +259,15 @@ async function loadUsers() {
     if (r.status !== 'success') throw new Error(r.message);
     var users = r.users || [];
     if (users.length === 0) { c.innerHTML = '<div class="empty-state"><p>👥 ยังไม่มีผู้ใช้</p></div>'; return; }
-    var html = '<div class="table-container"><table class="table"><thead><tr><th>ชื่อ</th><th>Username</th><th>สถานะ</th><th>Role</th><th>จัดการ</th></tr></thead><tbody>';
+    var html = '<div class="table-container"><table class="table"><thead><tr><th>รหัส</th><th>ชื่อ-สกุล</th><th>ชื่อเล่น</th><th>Username</th><th>สถานะ</th><th>Role</th><th>จัดการ</th></tr></thead><tbody>';
     for (var i = 0; i < users.length; i++) {
       var u = users[i];
       var roleBadge = u.role==='admin' ? '<span class="badge badge-purple">Admin</span>' : '<span class="badge badge-blue">Student</span>';
       var statusBadge = (u.status||'active')==='active' ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-red">Inactive</span>';
-      html += '<tr><td><strong>' + escapeHtml(u.name) + '</strong></td><td style="color:var(--text-secondary)">' + escapeHtml(u.username) + '</td>' +
+      html += '<tr><td><small style="color:var(--text-secondary)">' + escapeHtml(u.student_id||'-') + '</small></td>' +
+        '<td><strong>' + escapeHtml(u.name) + '</strong></td>' +
+        '<td style="color:var(--text-secondary)">' + escapeHtml(u.nickname||'-') + '</td>' +
+        '<td style="color:var(--text-secondary)">' + escapeHtml(u.username) + '</td>' +
         '<td>' + statusBadge + '</td><td>' + roleBadge + '</td><td style="white-space:nowrap">' +
         '<button class="btn btn-primary btn-sm" onclick="openPasswordChange(\'' + u.user_id + '\',\'' + escapeHtml(u.name) + '\')" style="font-size:.78rem;margin-right:4px">🔑</button>' +
         '<button class="btn btn-sm" onclick="viewStudentDetail(\'' + u.user_id + '\')" style="font-size:.78rem;background:var(--glass-bg);color:var(--text-primary);margin-right:4px">📋</button>' +
@@ -272,9 +282,23 @@ async function loadUsers() {
 async function addUser(e) {
   e.preventDefault(); var btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
   try {
-    var r = await apiAdminAddUser({ name: getId('uName').value.trim(), username: getId('uUsername').value.trim(), password: getId('uPassword').value, avatar_color: getId('uColor').value });
-    if (r.status === 'success') { showToast('เพิ่มนักเรียนเรียบร้อย! ✅','success'); e.target.reset(); getId('uColor').value='#10b981'; loadUsers(); }
-    else throw new Error(r.message);
+    var payload = {
+      username: getId('uUsername').value.trim(),
+      password: getId('uPassword').value,
+      first_name: getId('uFirstName').value.trim(),
+      last_name: getId('uLastName').value.trim(),
+      nickname: getId('uNickname').value.trim(),
+      birth_date: getId('uDob').value,
+      citizen_id: getId('uCitizen').value.trim(),
+      avatar_color: getId('uColor').value
+    };
+    var r = await apiAdminAddUser(payload);
+    if (r.status === 'success') { 
+      showToast(r.message || 'เพิ่มนักเรียนเรียบร้อย! ✅','success'); 
+      e.target.reset(); 
+      getId('uColor').value='#10b981'; 
+      loadUsers(); 
+    } else throw new Error(r.message);
   } catch(err) { showToast(err.message||'เพิ่มไม่สำเร็จ','error'); }
   btn.disabled = false;
 }
@@ -464,19 +488,70 @@ async function loadAllScores() {
     if (r.status !== 'success') throw new Error(r.message);
     var scores = r.scores || [];
     if (scores.length === 0) { c.innerHTML = '<div class="empty-state"><p>📊 ยังไม่มีคะแนน</p></div>'; return; }
-    var html = '<div class="table-container"><table class="table"><thead><tr><th>นักเรียน</th><th>วิชา</th><th>ข้อสอบ</th><th>คะแนน</th><th>%</th><th>เกรด</th><th>สถานะ</th><th>ผ่าน</th></tr></thead><tbody>';
+    window.allScoresPool = {};
+    var html = '<div class="table-container"><table class="table"><thead><tr><th>รหัส</th><th>นักเรียน</th><th>วิชา</th><th>ข้อสอบ</th><th>คะแนน</th><th>%</th><th>เกรด</th><th>แก้คะแนน</th></tr></thead><tbody>';
     for (var i = 0; i < scores.length; i++) {
       var s = scores[i];
+      window.allScoresPool[s.score_id] = s;
       var grade = getGrade(s.percentage);
       var passBadge = s.grading_status === 'pending' ? '<span class="pass-badge pass-wait">รอตรวจ</span>'
-        : s.passed ? '<span class="pass-badge pass-yes">ผ่าน</span>' : '<span class="pass-badge pass-no">ไม่ผ่าน</span>';
-      var statusText = s.grading_status === 'pending' ? '🟡' : s.grading_status === 'graded' ? '✅' : '🤖';
-      html += '<tr><td><strong>' + escapeHtml(s.user_name) + '</strong></td><td>' + escapeHtml(s.subject_name) + '</td>' +
-        '<td>' + escapeHtml(s.assignment_title) + '</td><td>' + s.score + '/' + s.max_score + '</td>' +
-        '<td>' + s.percentage + '%</td><td><span style="color:' + grade.color + ';font-weight:700">' + grade.letter + '</span></td>' +
-        '<td>' + statusText + '</td><td>' + passBadge + '</td></tr>';
+        : s.passed ? '<span class="pass-badge pass-yes">✅ ผ่าน</span>' : '<span class="pass-badge pass-no">❌ ไม่ผ่าน</span>';
+      var overrideFlag = (s.is_passed_override && s.is_passed_override !== '') ? '<br><small style="color:#f59e0b">(Override)</small>' : '';
+      var adjustedFlag = s.is_adjusted ? '<span title="มีการแก้ไขย้อนหลัง">✏️</span>' : '';
+      
+      html += '<tr><td><small style="color:var(--text-secondary)">' + escapeHtml(s.student_id||'-') + '</small></td>' +
+        '<td><strong>' + escapeHtml(s.user_name) + '</strong></td><td>' + escapeHtml(s.subject_name) + '</td>' +
+        '<td>' + escapeHtml(s.assignment_title) + '</td><td>' + s.score + '/' + s.max_score + ' ' + adjustedFlag + '</td>' +
+        '<td>' + s.percentage + '%</td><td>' + passBadge + overrideFlag + '</td>' +
+        '<td><button class="btn btn-sm" onclick="openAdjustScoreModal(\'' + s.score_id + '\')" style="background:var(--glass-bg);color:var(--primary);font-size:0.8rem">✏️ แก้ไข</button></td></tr>';
     }
     html += '</tbody></table></div>';
     c.innerHTML = html;
   } catch(err) { c.innerHTML = '<div class="empty-state"><p>⚠️ ' + (err.message||'โหลดไม่สำเร็จ') + '</p></div>'; }
+}
+
+// ============================================
+// SCORE ADJUSTMENT
+// ============================================
+
+var currentAdjustScoreId = '';
+
+function openAdjustScoreModal(scoreId) {
+  var s = window.allScoresPool[scoreId];
+  if (!s) return;
+  currentAdjustScoreId = scoreId;
+  getId('adjUserName').textContent = s.user_name + ' (' + (s.student_id||'-') + ')';
+  getId('adjTaskName').textContent = s.assignment_title;
+  getId('adjNewScore').value = s.score;
+  getId('adjNewScore').max = s.max_score;
+  getId('adjPassedOverride').value = s.is_passed_override !== null ? s.is_passed_override.toString() : '';
+  getId('adjReason').value = '';
+  openModal('adjustScoreModal');
+}
+
+async function submitScoreAdjustment() {
+  var newScore = getId('adjNewScore').value;
+  var override = getId('adjPassedOverride').value;
+  var reason = getId('adjReason').value.trim();
+  
+  if (newScore === '' || !reason) {
+    showToast('กรุณากรอกคะแนนใหม่และเหตุผล', 'error');
+    return;
+  }
+  
+  var btn = getId('btnSaveAdjustment');
+  btn.disabled = true; btn.textContent = '⏳';
+  
+  try {
+    var r = await apiAdminAdjustScore(currentAdjustScoreId, Number(newScore), reason, override);
+    if (r.status === 'success') {
+      showToast('ปรับคะแนนเรียบร้อย ✅', 'success');
+      closeModal('adjustScoreModal');
+      loadAllScores(); // Refresh
+      loadAdminDashboard();
+    } else throw new Error(r.message);
+  } catch(err) {
+    showToast(err.message||'ล้มเหลว', 'error');
+  }
+  btn.disabled = false; btn.textContent = '💾 บันทึก';
 }

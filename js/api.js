@@ -3,7 +3,7 @@
    ============================================ */
 
 // ⚠️ เปลี่ยน URL นี้เป็น Google Apps Script Web App URL ของคุณ
-const API_URL = 'https://script.google.com/macros/s/AKfycbzTc8m4kh7Q6Xq7iSiEQ2-7wOzxsHIYxxoh0xCU91F1lKhEuOeArGn2JknzvmexF_NW/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwXHP6cEn3WZu9fUoVu9EETEB_iBLtjWa6JxMsXt7IpEsgVyCcxO1wnKw6KdLaehSzL/exec';
 
 // ── Cache System ──
 const apiCache = {
@@ -123,6 +123,11 @@ async function apiGetStudentReport() {
   return apiCall('getStudentReport');
 }
 
+async function apiUpdateMyProfile(updates) {
+  apiCache.clear();
+  return apiCall('updateMyProfile', { updates });
+}
+
 // ============================================
 // ADMIN API — USER MANAGEMENT
 // ============================================
@@ -202,6 +207,16 @@ async function apiAdminGetSubmissions(filterStatus, filterAssignment) {
 async function apiAdminGradeSubmission(scoreId, grades) {
   apiCache.clear();
   return apiCall('adminGradeSubmission', { score_id: scoreId, grades });
+}
+
+async function apiAdminAdjustScore(scoreId, newScore, reason, isPassedOverride) {
+  apiCache.clear();
+  return apiCall('adminAdjustScore', { 
+    score_id: scoreId, 
+    new_score: newScore, 
+    reason: reason,
+    is_passed_override: isPassedOverride 
+  });
 }
 
 // ============================================
