@@ -729,9 +729,17 @@ a:hover { color: var(--accent-purple); }
   margin-bottom: var(--space-xl);
 }
 
+.login-logo .sci-spark-logo {
+  max-width: 260px;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+  display: block;
+  filter: drop-shadow(0 0 20px rgba(59,130,246,0.25));
+}
+
 .login-logo .logo-icon {
   width: 72px; height: 72px;
-  margin: 0 auto var(--space-md);
   background: var(--gradient-primary);
   border-radius: var(--radius-lg);
   display: flex;

@@ -114,9 +114,8 @@ function renderNavbar() {
   const initials = user.name ? user.name.charAt(0).toUpperCase() : 'U';
 
   const nav = createElement('nav', 'navbar', `
-    <a href="dashboard.html" class="navbar-brand">
-      <div class="logo-icon">📚</div>
-      <span>PBT LMS</span>
+    <a href="dashboard.html" class="navbar-brand" style="gap:var(--space-sm)">
+      <img src="https://img1.pic.in.th/images/Polished-Sci-Spark-Logo-with-Subtle-Highlights1.png" alt="Sci-Spark" style="height:42px; width:auto; border-radius:4px" />
     </a>
     <ul class="navbar-nav">
       <li><a href="dashboard.html" class="${currentPage === 'dashboard.html' ? 'active' : ''}">🏠 แดชบอร์ด</a></li>
