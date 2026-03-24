@@ -3,7 +3,7 @@
    ============================================ */
 
 // ⚠️ เปลี่ยน URL นี้เป็น Google Apps Script Web App URL ของคุณ
-const API_URL = 'https://script.google.com/macros/s/AKfycbz24iXttu50ryfKyn_wATE8tA65NsIAHXUH4UwVFCDhlgnkfFoc_U17gsR2ozXYpFjF/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzTc8m4kh7Q6Xq7iSiEQ2-7wOzxsHIYxxoh0xCU91F1lKhEuOeArGn2JknzvmexF_NW/exec';
 
 // ── Cache System ──
 const apiCache = {
@@ -23,7 +23,6 @@ const apiCache = {
 
 // ── API Call ──
 async function apiCall(action, data = {}) {
-  // Check cache for GET-like actions
   const cacheableActions = ['getSubjects', 'getLessons', 'getAssignments', 'getQuestions'];
   const cacheKey = action + JSON.stringify(data);
 
@@ -32,7 +31,6 @@ async function apiCall(action, data = {}) {
     if (cached) return cached;
   }
 
-  // Include auth token
   const user = getStoredUser();
   if (user) {
     data.user_id = user.user_id;
@@ -52,7 +50,6 @@ async function apiCall(action, data = {}) {
       throw new Error(result.message || 'API Error');
     }
 
-    // Cache successful responses
     if (cacheableActions.includes(action)) {
       apiCache.set(cacheKey, result);
     }
@@ -72,7 +69,10 @@ function getStoredUser() {
   } catch { return null; }
 }
 
-// ── Specific API Functions ──
+// ============================================
+// STUDENT API
+// ============================================
+
 async function apiLogin(username, password) {
   return apiCall('login', { username, password });
 }
@@ -94,7 +94,7 @@ async function apiGetQuestions(assignmentId) {
 }
 
 async function apiSubmitQuiz(assignmentId, answers) {
-  apiCache.remove('getScores' + JSON.stringify({}));
+  apiCache.clear();
   return apiCall('submitQuiz', { assignment_id: assignmentId, answers });
 }
 
@@ -119,10 +119,40 @@ async function apiLogAction(actionType, detail) {
   return apiCall('logAction', { action_type: actionType, detail });
 }
 
-// ── Admin API ──
+async function apiGetStudentReport() {
+  return apiCall('getStudentReport');
+}
+
+// ============================================
+// ADMIN API — USER MANAGEMENT
+// ============================================
+
 async function apiAdminGetUsers() {
   return apiCall('adminGetUsers');
 }
+
+async function apiAdminAddUser(data) {
+  apiCache.clear();
+  return apiCall('adminAddUser', data);
+}
+
+async function apiAdminUpdateUser(targetUserId, updates) {
+  apiCache.clear();
+  return apiCall('adminUpdateUser', { target_user_id: targetUserId, updates });
+}
+
+async function apiAdminDeleteUser(targetUserId) {
+  apiCache.clear();
+  return apiCall('adminDeleteUser', { target_user_id: targetUserId });
+}
+
+async function apiAdminChangePassword(data) {
+  return apiCall('adminChangePassword', data);
+}
+
+// ============================================
+// ADMIN API — CONTENT
+// ============================================
 
 async function apiAdminAddSubject(data) {
   apiCache.clear();
@@ -156,4 +186,32 @@ async function apiAdminUpdateItem(data) {
 async function apiAdminDeleteItem(data) {
   apiCache.clear();
   return apiCall('adminDeleteItem', data);
+}
+
+// ============================================
+// ADMIN API — GRADING
+// ============================================
+
+async function apiAdminGetSubmissions(filterStatus, filterAssignment) {
+  return apiCall('adminGetSubmissions', {
+    filter_status: filterStatus || 'all',
+    filter_assignment: filterAssignment || ''
+  });
+}
+
+async function apiAdminGradeSubmission(scoreId, grades) {
+  apiCache.clear();
+  return apiCall('adminGradeSubmission', { score_id: scoreId, grades });
+}
+
+// ============================================
+// ADMIN API — ANALYTICS
+// ============================================
+
+async function apiAdminGetStudentDetail(targetUserId) {
+  return apiCall('adminGetStudentDetail', { target_user_id: targetUserId });
+}
+
+async function apiAdminGetDashboard() {
+  return apiCall('adminGetDashboard');
 }

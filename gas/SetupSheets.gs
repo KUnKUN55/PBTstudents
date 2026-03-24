@@ -1,6 +1,7 @@
 // ============================================
 // PBTstudents LMS — Google Sheets Setup Script
 // วิธีใช้: เปิด Google Sheets > Extensions > Apps Script > วาง code นี้ > รัน setupAllSheets()
+// ⚠️ การรัน setupAllSheets() จะล้างข้อมูลทั้งหมด — backup ก่อนเสมอ!
 // ============================================
 
 function setupAllSheets() {
@@ -8,7 +9,7 @@ function setupAllSheets() {
 
   // ── 1. Users ──
   createOrResetSheet(ss, 'Users', [
-    'user_id', 'username', 'password_hash', 'name', 'role', 'avatar_color'
+    'user_id', 'username', 'password_hash', 'name', 'role', 'avatar_color', 'email', 'status', 'created_at'
   ]);
 
   // ── 2. Subjects ──
@@ -21,19 +22,23 @@ function setupAllSheets() {
     'lesson_id', 'subject_id', 'title', 'description', 'file_url', 'file_type', 'chapter', 'order_index', 'created_at'
   ]);
 
-  // ── 4. Assignments (เช่น ข้อสอบ, แบบฝึกหัด) ──
+  // ── 4. Assignments (ข้อสอบ, แบบฝึกหัด) ──
   createOrResetSheet(ss, 'Assignments', [
-    'assignment_id', 'subject_id', 'title', 'type', 'max_score', 'due_date', 'description', 'created_at'
+    'assignment_id', 'subject_id', 'title', 'type', 'max_score', 'due_date', 'description', 'pass_threshold', 'created_at'
   ]);
 
-  // ── 5. Questions (คำถาม MCQ) ──
+  // ── 5. Questions (รองรับ MCQ / Essay / Upload + รูปภาพ) ──
   createOrResetSheet(ss, 'Questions', [
-    'question_id', 'assignment_id', 'question_text', 'choice_a', 'choice_b', 'choice_c', 'choice_d', 'correct_answer'
+    'question_id', 'assignment_id', 'question_text', 'question_type',
+    'choice_a', 'choice_b', 'choice_c', 'choice_d', 'correct_answer',
+    'image_url', 'max_points', 'order_index'
   ]);
 
-  // ── 6. Scores (คะแนนสอบ) ──
+  // ── 6. Scores (คะแนนสอบ + ระบบตรวจ Manual) ──
   createOrResetSheet(ss, 'Scores', [
-    'score_id', 'user_id', 'assignment_id', 'score', 'max_score', 'answers_json', 'submitted_at'
+    'score_id', 'user_id', 'assignment_id', 'score', 'max_score',
+    'answers_json', 'grading_status', 'feedback_json',
+    'graded_by', 'graded_at', 'submitted_at'
   ]);
 
   // ── 7. Logs ──
@@ -81,16 +86,16 @@ function createOrResetSheet(ss, name, headers) {
 }
 
 function seedDemoData(ss) {
+  var now = new Date().toISOString();
+
   // ── Demo Users ──
-  // Password hash: ใช้ SHA-256 ของ password จริง
-  // demo passwords: admin123, student1, student2, student3, student4
   var users = ss.getSheetByName('Users');
   var demoUsers = [
-    ['U001', 'admin',   hashPassword('admin123'),   'ครูพี่ติว (Admin)', 'admin',   '#3b82f6'],
-    ['U002', 'student1', hashPassword('student1'), 'นักเรียน 1',        'student', '#10b981'],
-    ['U003', 'student2', hashPassword('student2'), 'นักเรียน 2',        'student', '#8b5cf6'],
-    ['U004', 'student3', hashPassword('student3'), 'นักเรียน 3',        'student', '#f59e0b'],
-    ['U005', 'student4', hashPassword('student4'), 'นักเรียน 4',        'student', '#ec4899']
+    ['U001', 'admin',    hashPassword('admin123'),   'ครูพี่ติว (Admin)', 'admin',   '#3b82f6', '', 'active', now],
+    ['U002', 'student1', hashPassword('student1'),   'นักเรียน 1',        'student', '#10b981', '', 'active', now],
+    ['U003', 'student2', hashPassword('student2'),   'นักเรียน 2',        'student', '#8b5cf6', '', 'active', now],
+    ['U004', 'student3', hashPassword('student3'),   'นักเรียน 3',        'student', '#f59e0b', '', 'active', now],
+    ['U005', 'student4', hashPassword('student4'),   'นักเรียน 4',        'student', '#ec4899', '', 'active', now]
   ];
   users.getRange(2, 1, demoUsers.length, demoUsers[0].length).setValues(demoUsers);
 
@@ -105,7 +110,6 @@ function seedDemoData(ss) {
 
   // ── Demo Lessons ──
   var lessons = ss.getSheetByName('Lessons');
-  var now = new Date().toISOString();
   var demoLessons = [
     ['L001', 'SUB001', 'เซลล์และโครงสร้างเซลล์',       'เนื้อหาเกี่ยวกับเซลล์พืชและเซลล์สัตว์',           '', 'pdf',   'บทที่ 1', 1, now],
     ['L002', 'SUB001', 'การแบ่งเซลล์',                   'ไมโทซิสและไมโอซิส',                                   '', 'pdf',   'บทที่ 1', 2, now],
@@ -114,21 +118,21 @@ function seedDemoData(ss) {
   ];
   lessons.getRange(2, 1, demoLessons.length, demoLessons[0].length).setValues(demoLessons);
 
-  // ── Demo Assignment (Quiz) ──
+  // ── Demo Assignment (Quiz) — with pass_threshold ──
   var assignments = ss.getSheetByName('Assignments');
   var demoAssignments = [
-    ['A001', 'SUB001', 'ข้อสอบ: เซลล์และโครงสร้าง', 'quiz', 10, '', 'ข้อสอบวัดความรู้เรื่องเซลล์', now]
+    ['A001', 'SUB001', 'ข้อสอบ: เซลล์และโครงสร้าง', 'quiz', 10, '', 'ข้อสอบวัดความรู้เรื่องเซลล์', 50, now]
   ];
   assignments.getRange(2, 1, demoAssignments.length, demoAssignments[0].length).setValues(demoAssignments);
 
-  // ── Demo Questions ──
+  // ── Demo Questions (with question_type, image_url, max_points, order_index) ──
   var questions = ss.getSheetByName('Questions');
   var demoQuestions = [
-    ['Q001', 'A001', 'ออร์แกเนลล์ใดทำหน้าที่สร้างพลังงาน (ATP)?',        'ไรโบโซม',       'ไมโทคอนเดรีย', 'กอลจิบอดี',     'ไลโซโซม',      'B'],
-    ['Q002', 'A001', 'เยื่อหุ้มเซลล์มีโครงสร้างเป็นแบบใด?',              'Fluid Mosaic',  'Double Helix',  'Beta Sheet',    'Alpha Helix',  'A'],
-    ['Q003', 'A001', 'DNA อยู่ในส่วนใดของเซลล์?',                          'ไซโทพลาซึม',    'นิวเคลียส',     'ไรโบโซม',       'เยื่อหุ้มเซลล์', 'B'],
-    ['Q004', 'A001', 'ผนังเซลล์พบในเซลล์ชนิดใด?',                         'เซลล์สัตว์',     'เซลล์พืช',      'ทั้งสองชนิด',    'ไม่พบในเซลล์ใด', 'B'],
-    ['Q005', 'A001', 'กระบวนการแบ่งเซลล์แบบ Mitosis ได้เซลล์ลูกกี่เซลล์?', '1 เซลล์',       '2 เซลล์',       '3 เซลล์',       '4 เซลล์',       'B']
+    ['Q001', 'A001', 'ออร์แกเนลล์ใดทำหน้าที่สร้างพลังงาน (ATP)?',        'mcq', 'ไรโบโซม',       'ไมโทคอนเดรีย', 'กอลจิบอดี',     'ไลโซโซม',      'B', '', 2, 1],
+    ['Q002', 'A001', 'เยื่อหุ้มเซลล์มีโครงสร้างเป็นแบบใด?',              'mcq', 'Fluid Mosaic',  'Double Helix',  'Beta Sheet',    'Alpha Helix',  'A', '', 2, 2],
+    ['Q003', 'A001', 'DNA อยู่ในส่วนใดของเซลล์?',                          'mcq', 'ไซโทพลาซึม',    'นิวเคลียส',     'ไรโบโซม',       'เยื่อหุ้มเซลล์', 'B', '', 2, 3],
+    ['Q004', 'A001', 'อธิบายความแตกต่างระหว่างเซลล์พืชและเซลล์สัตว์',       'essay', '',           '',              '',             '',             '', '', 5, 4],
+    ['Q005', 'A001', 'สรุปเนื้อหาบทเรียนที่ 1 (อัพโหลดสรุปแบบ Mind Map)',  'upload', '',          '',              '',             '',             '', '', 5, 5]
   ];
   questions.getRange(2, 1, demoQuestions.length, demoQuestions[0].length).setValues(demoQuestions);
 }

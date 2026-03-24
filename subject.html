@@ -6,46 +6,35 @@
   <title>PBT LMS — วิชา</title>
   <meta name="description" content="รายละเอียดวิชาและบทเรียน">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    .pass-badge{padding:2px 10px;border-radius:99px;font-size:.75rem;font-weight:700}
+    .pass-yes{background:#10b98120;color:#10b981}.pass-no{background:#ef444420;color:#ef4444}
+    .pass-wait{background:#f59e0b20;color:#f59e0b}
+  </style>
 </head>
 <body>
   <div class="bg-animated"></div>
-
   <div class="app-container">
-    <!-- Navbar inserted by JS -->
-
-    <!-- Subject Header -->
     <div class="page-header" id="subjectHeader">
-      <a href="dashboard.html" style="font-size:0.85rem; color:var(--text-secondary); display:inline-flex; align-items:center; gap:4px; margin-bottom:var(--space-sm);">← กลับหน้าหลัก</a>
+      <a href="dashboard.html" style="font-size:.85rem;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px;margin-bottom:var(--space-sm)">← กลับหน้าหลัก</a>
       <h1 class="page-title" id="subjectName">กำลังโหลด...</h1>
       <p class="page-subtitle" id="subjectDesc"></p>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
       <button class="tab-btn active" data-tab="tabLessons">📖 บทเรียน</button>
       <button class="tab-btn" data-tab="tabAssignments">📝 ข้อสอบ / แบบทดสอบ</button>
       <button class="tab-btn" data-tab="tabScores">📊 คะแนนของฉัน</button>
     </div>
 
-    <!-- Tab: Lessons -->
     <div class="tab-content active" id="tabLessons">
-      <div id="lessonsContainer">
-        <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลด...</p></div>
-      </div>
+      <div id="lessonsContainer"><div class="empty-state"><div class="spinner" style="margin:0 auto"></div><p style="margin-top:var(--space-md)">กำลังโหลด...</p></div></div>
     </div>
-
-    <!-- Tab: Assignments -->
     <div class="tab-content" id="tabAssignments">
-      <div id="assignmentsContainer">
-        <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลด...</p></div>
-      </div>
+      <div id="assignmentsContainer"><div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div></div>
     </div>
-
-    <!-- Tab: Scores -->
     <div class="tab-content" id="tabScores">
-      <div id="scoresContainer">
-        <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลด...</p></div>
-      </div>
+      <div id="scoresContainer"><div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div></div>
     </div>
   </div>
 
@@ -53,8 +42,7 @@
   <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
   <script>
-    if (!requireAuth()) { /* redirects */ }
-
+    if (!requireAuth()) {}
     var subjectId = getParam('id');
     if (!subjectId) window.location.href = 'dashboard.html';
 
@@ -66,154 +54,110 @@
 
     async function loadSubjectData() {
       try {
-        // Load subject info from subjects list
         var subjectsData = await apiGetSubjects();
         if (subjectsData.status === 'success') {
           var subject = subjectsData.subjects.find(function(s) { return s.subject_id === subjectId; });
           if (subject) {
-            var icon = subject.icon || getSubjectIcon(subject.subject_name);
-            document.getElementById('subjectName').textContent = icon + ' ' + subject.subject_name;
+            document.getElementById('subjectName').textContent = (subject.icon||'📚') + ' ' + subject.subject_name;
             document.getElementById('subjectDesc').textContent = subject.description || '';
             document.title = 'PBT LMS — ' + subject.subject_name;
           }
         }
-
-        // Load lessons, assignments, scores in parallel
-        var results = await Promise.all([
-          apiGetLessons(subjectId),
-          apiGetAssignments(subjectId),
-          apiGetScores()
-        ]);
-
+        var results = await Promise.all([apiGetLessons(subjectId), apiGetAssignments(subjectId), apiGetScores()]);
         renderLessons(results[0].lessons || []);
         renderAssignments(results[1].assignments || []);
         renderScores(results[2].scores || []);
-
-      } catch (err) {
-        showToast(err.message || 'โหลดข้อมูลไม่สำเร็จ', 'error');
-      }
+      } catch (err) { showToast(err.message || 'โหลดข้อมูลไม่สำเร็จ', 'error'); }
     }
 
     function renderLessons(lessons) {
-      var container = document.getElementById('lessonsContainer');
-      if (lessons.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีบทเรียนในวิชานี้</p></div>';
-        return;
-      }
-
-      // Group by chapter
+      var c = document.getElementById('lessonsContainer');
+      if (lessons.length === 0) { c.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีบทเรียน</p></div>'; return; }
       var chapters = {};
       for (var i = 0; i < lessons.length; i++) {
         var ch = lessons[i].chapter || 'ทั่วไป';
         if (!chapters[ch]) chapters[ch] = [];
         chapters[ch].push(lessons[i]);
       }
-
       var html = '';
-      for (var chapterName in chapters) {
-        html += '<h3 style="font-size:1rem; font-weight:600; margin-bottom:var(--space-md); color:var(--text-secondary);">📂 ' + escapeHtml(chapterName) + '</h3>';
-        var chLessons = chapters[chapterName];
-        for (var j = 0; j < chLessons.length; j++) {
-          var l = chLessons[j];
-          var statusBadge = l.completed
-            ? '<span class="badge badge-green">✅ เรียนแล้ว</span>'
-            : '<span class="badge badge-orange">📋 ยังไม่ได้เรียน</span>';
-
-          html += '<div class="card card-clickable" onclick="goToLesson(\'' + l.lesson_id + '\')" style="margin-bottom:var(--space-md);">' +
-            '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-sm);">' +
-              '<div>' +
-                '<div class="card-title">' + getFileIcon(l.file_type) + ' ' + escapeHtml(l.title) + '</div>' +
-                '<div class="card-desc">' + escapeHtml(l.description || '') + '</div>' +
-              '</div>' +
-              '<div>' + statusBadge + '</div>' +
-            '</div>' +
-          '</div>';
+      for (var chName in chapters) {
+        html += '<h3 style="font-size:1rem;font-weight:600;margin-bottom:var(--space-md);color:var(--text-secondary)">📂 ' + escapeHtml(chName) + '</h3>';
+        var arr = chapters[chName];
+        for (var j = 0; j < arr.length; j++) {
+          var l = arr[j];
+          var badge = l.completed ? '<span class="badge badge-green">✅ เรียนแล้ว</span>' : '<span class="badge badge-orange">📋 ยังไม่ได้เรียน</span>';
+          html += '<div class="card card-clickable" onclick="goToLesson(\'' + l.lesson_id + '\')" style="margin-bottom:var(--space-md)">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-sm)">' +
+            '<div><div class="card-title">' + getFileIcon(l.file_type) + ' ' + escapeHtml(l.title) + '</div>' +
+            '<div class="card-desc">' + escapeHtml(l.description||'') + '</div></div><div>' + badge + '</div></div></div>';
         }
       }
-      container.innerHTML = html;
+      c.innerHTML = html;
     }
 
     function renderAssignments(assignments) {
-      var container = document.getElementById('assignmentsContainer');
-      if (assignments.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีข้อสอบในวิชานี้</p></div>';
-        return;
-      }
-
+      var c = document.getElementById('assignmentsContainer');
+      if (assignments.length === 0) { c.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีข้อสอบ</p></div>'; return; }
       var html = '';
       for (var i = 0; i < assignments.length; i++) {
         var a = assignments[i];
-        var typeLabel = a.type === 'quiz' ? '📝 แบบทดสอบ' : '📤 ส่งงาน';
-        var scoreBadge = '';
-        if (a.submitted && a.user_score !== null && a.user_score !== undefined) {
+        var typeLabel = a.type === 'quiz' ? '📝 แบบทดสอบ' : a.type === 'essay' ? '✍️ ข้อเขียน' : '📋 ผสม';
+        var scoreBadge;
+        if (a.submitted && a.user_score !== null) {
           var pct = a.max_score > 0 ? Math.round((a.user_score / a.max_score) * 100) : 0;
-          var badgeClass = pct >= 60 ? 'badge-green' : pct >= 40 ? 'badge-orange' : 'badge-red';
-          scoreBadge = '<span class="badge ' + badgeClass + '">' + a.user_score + '/' + a.max_score + ' (' + pct + '%)</span>';
+          var gradingStatus = a.grading_status || 'auto_graded';
+          if (gradingStatus === 'pending') {
+            scoreBadge = '<span class="pass-badge pass-wait">🟡 รอตรวจ (' + a.user_score + '/' + a.max_score + ')</span>';
+          } else {
+            var bClass = pct >= 60 ? 'badge-green' : pct >= 40 ? 'badge-orange' : 'badge-red';
+            scoreBadge = '<span class="badge ' + bClass + '">' + a.user_score + '/' + a.max_score + ' (' + pct + '%)</span>';
+          }
         } else {
           scoreBadge = '<span class="badge badge-blue">ยังไม่ได้ทำ</span>';
         }
-
-        html += '<div class="card card-clickable" onclick="goToAssignment(\'' + a.assignment_id + '\')" style="margin-bottom:var(--space-md);">' +
-          '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-sm);">' +
-            '<div>' +
-              '<div class="card-title">' + escapeHtml(a.title) + '</div>' +
-              '<div class="card-desc">' + typeLabel + (a.description ? ' — ' + escapeHtml(a.description) : '') + '</div>' +
-            '</div>' +
-            '<div style="display:flex; gap:var(--space-sm); align-items:center;">' +
-              scoreBadge +
-              '<span style="font-size:1.2rem;">→</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
+        html += '<div class="card card-clickable" onclick="goToAssignment(\'' + a.assignment_id + '\')" style="margin-bottom:var(--space-md)">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-sm)">' +
+          '<div><div class="card-title">' + escapeHtml(a.title) + '</div>' +
+          '<div class="card-desc">' + typeLabel + (a.description ? ' — ' + escapeHtml(a.description) : '') + '</div></div>' +
+          '<div style="display:flex;gap:var(--space-sm);align-items:center">' + scoreBadge + '<span style="font-size:1.2rem">→</span></div></div></div>';
       }
-      container.innerHTML = html;
+      c.innerHTML = html;
     }
 
     function renderScores(allScores) {
-      // Filter scores for this subject
       var scores = allScores.filter(function(s) { return s.subject_id === subjectId; });
-      var container = document.getElementById('scoresContainer');
+      var c = document.getElementById('scoresContainer');
+      if (scores.length === 0) { c.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><p>ยังไม่มีคะแนน</p></div>'; return; }
 
-      if (scores.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><p>ยังไม่มีคะแนนในวิชานี้</p></div>';
-        return;
-      }
-
-      var html = '<div class="table-container"><table class="table">' +
-        '<thead><tr><th>ข้อสอบ</th><th>คะแนน</th><th>เปอร์เซ็นต์</th><th>เกรด</th><th>ทำเมื่อ</th></tr></thead><tbody>';
-
-      var totalScore = 0;
-      var totalMax = 0;
+      var html = '<div class="table-container"><table class="table"><thead><tr><th>ข้อสอบ</th><th>คะแนน</th><th>%</th><th>เกรด</th><th>สถานะ</th><th>เมื่อ</th></tr></thead><tbody>';
+      var totalScore = 0, totalMax = 0;
 
       for (var i = 0; i < scores.length; i++) {
         var s = scores[i];
         var pct = s.max_score > 0 ? Math.round((s.score / s.max_score) * 100) : 0;
         var grade = getGrade(pct);
-        totalScore += Number(s.score) || 0;
-        totalMax += Number(s.max_score) || 0;
+        var gStatus = s.grading_status || 'auto_graded';
 
-        html += '<tr>' +
-          '<td>' + escapeHtml(s.assignment_title || '-') + '</td>' +
-          '<td><strong>' + s.score + '/' + s.max_score + '</strong></td>' +
-          '<td>' + pct + '%</td>' +
-          '<td><span style="color:' + grade.color + '; font-weight:700;">' + grade.letter + '</span></td>' +
-          '<td>' + formatDate(s.submitted_at) + '</td>' +
-        '</tr>';
+        var passBadge;
+        if (gStatus === 'pending') {
+          passBadge = '<span class="pass-badge pass-wait">🟡 รอตรวจ</span>';
+        } else {
+          totalScore += Number(s.score) || 0;
+          totalMax += Number(s.max_score) || 0;
+          passBadge = s.passed ? '<span class="pass-badge pass-yes">✅ ผ่าน</span>' : '<span class="pass-badge pass-no">❌ ไม่ผ่าน</span>';
+        }
+
+        html += '<tr><td>' + escapeHtml(s.assignment_title||'-') + '</td><td><strong>' + s.score + '/' + s.max_score + '</strong></td>' +
+          '<td>' + pct + '%</td><td><span style="color:' + grade.color + ';font-weight:700">' + grade.letter + '</span></td>' +
+          '<td>' + passBadge + '</td><td>' + formatDate(s.submitted_at) + '</td></tr>';
       }
 
-      // Summary row
       var avgPct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
       var avgGrade = getGrade(avgPct);
-
-      html += '</tbody><tfoot><tr style="font-weight:700;">' +
-        '<td>รวม / เฉลี่ย</td>' +
-        '<td>' + totalScore + '/' + totalMax + '</td>' +
-        '<td>' + avgPct + '%</td>' +
-        '<td><span style="color:' + avgGrade.color + ';">' + avgGrade.letter + ' — ' + avgGrade.label + '</span></td>' +
-        '<td></td>' +
-      '</tr></tfoot></table></div>';
-
-      container.innerHTML = html;
+      html += '</tbody><tfoot><tr style="font-weight:700"><td>รวม/เฉลี่ย</td><td>' + totalScore + '/' + totalMax + '</td>' +
+        '<td>' + avgPct + '%</td><td><span style="color:' + avgGrade.color + '">' + avgGrade.letter + '</span></td>' +
+        '<td>' + (avgPct >= 50 ? '<span class="pass-badge pass-yes">ผ่าน</span>' : '<span class="pass-badge pass-no">ไม่ผ่าน</span>') + '</td><td></td></tr></tfoot></table></div>';
+      c.innerHTML = html;
     }
 
     function getGrade(pct) {
@@ -225,13 +169,8 @@
       return { letter: 'D', label: 'ต้องปรับปรุง', color: '#ef4444' };
     }
 
-    function goToLesson(lessonId) {
-      window.location.href = 'lesson.html?id=' + lessonId + '&subject=' + subjectId;
-    }
-
-    function goToAssignment(assignmentId) {
-      window.location.href = 'assignment.html?id=' + assignmentId + '&subject=' + subjectId;
-    }
+    function goToLesson(id) { window.location.href = 'lesson.html?id=' + id + '&subject=' + subjectId; }
+    function goToAssignment(id) { window.location.href = 'assignment.html?id=' + id + '&subject=' + subjectId; }
 
     function escapeHtml(str) {
       if (!str) return '';

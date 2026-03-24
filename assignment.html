@@ -6,41 +6,31 @@
   <title>PBT LMS — ทำข้อสอบ</title>
   <meta name="description" content="ทำแบบทดสอบและตรวจคะแนนอัตโนมัติ">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    .q-image{max-width:100%;max-height:300px;border-radius:12px;margin-bottom:var(--space-md);border:1px solid var(--border-color)}
+    .essay-input{width:100%;min-height:120px;resize:vertical}
+    .upload-input{width:100%}
+    .feedback-box{background:var(--glass-bg);border-left:3px solid var(--primary);padding:var(--space-md);border-radius:8px;margin-top:var(--space-sm);font-size:.9rem}
+    .feedback-box .fb-label{font-size:.75rem;color:var(--text-secondary);margin-bottom:4px}
+    .pts-badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.75rem;font-weight:700}
+    .pts-full{background:#10b98120;color:#10b981}.pts-partial{background:#f59e0b20;color:#f59e0b}.pts-zero{background:#ef444420;color:#ef4444}
+  </style>
 </head>
 <body>
   <div class="bg-animated"></div>
-
   <div class="app-container">
-    <!-- Navbar inserted by JS -->
-
     <div class="quiz-container">
-      <!-- Back Link -->
-      <a href="#" id="backLink" style="font-size:0.85rem; color:var(--text-secondary); display:inline-flex; align-items:center; gap:4px; margin-bottom:var(--space-lg);">← กลับหน้าวิชา</a>
-
-      <!-- Assignment Header -->
+      <a href="#" id="backLink" style="font-size:.85rem;color:var(--text-secondary);display:inline-flex;align-items:center;gap:4px;margin-bottom:var(--space-lg)">← กลับหน้าวิชา</a>
       <div class="page-header">
         <h1 class="page-title" id="assignmentTitle">กำลังโหลด...</h1>
         <p class="page-subtitle" id="assignmentDesc"></p>
       </div>
-
-      <!-- Previous Score Notice -->
-      <div id="previousScoreNotice" style="display:none;" class="card" style="margin-bottom:var(--space-lg);">
+      <div id="previousScoreNotice" style="display:none" class="card" style="margin-bottom:var(--space-lg)"></div>
+      <div id="quizArea"><div class="empty-state"><div class="spinner" style="margin:0 auto"></div><p style="margin-top:var(--space-md)">กำลังโหลดข้อสอบ...</p></div></div>
+      <div id="submitArea" style="display:none;margin-top:var(--space-xl)">
+        <button class="btn btn-primary btn-lg btn-block" onclick="submitQuiz()" id="submitBtn">📝 ส่งคำตอบ</button>
       </div>
-
-      <!-- Quiz Area -->
-      <div id="quizArea">
-        <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลดข้อสอบ...</p></div>
-      </div>
-
-      <!-- Submit Button -->
-      <div id="submitArea" style="display:none; margin-top:var(--space-xl);">
-        <button class="btn btn-primary btn-lg btn-block" onclick="submitQuiz()" id="submitBtn">
-          📝 ส่งคำตอบ
-        </button>
-      </div>
-
-      <!-- Result Area -->
-      <div id="resultArea" style="display:none;"></div>
+      <div id="resultArea" style="display:none"></div>
     </div>
   </div>
 
@@ -48,16 +38,17 @@
   <script src="js/auth.js"></script>
   <script src="js/app.js"></script>
   <script>
-    if (!requireAuth()) { /* redirects */ }
+    if (!requireAuth()) {}
 
     var assignmentId = getParam('id');
     var subjectId = getParam('subject');
     if (!assignmentId) window.location.href = 'dashboard.html';
-
     document.getElementById('backLink').href = subjectId ? 'subject.html?id=' + subjectId : 'dashboard.html';
 
     var quizQuestions = [];
     var userAnswers = {};
+    var assignmentInfo = null;
+    var feedbackData = null;
 
     document.addEventListener('DOMContentLoaded', function() {
       renderNavbar();
@@ -69,41 +60,35 @@
         var data = await apiGetQuestions(assignmentId);
         if (data.status !== 'success') throw new Error(data.message);
 
-        // Set header
+        assignmentInfo = data.assignment;
+        feedbackData = data.feedback;
+
         if (data.assignment) {
           document.getElementById('assignmentTitle').textContent = '📝 ' + (data.assignment.title || 'ข้อสอบ');
           document.getElementById('assignmentDesc').textContent = data.assignment.description || '';
           document.title = 'PBT LMS — ' + (data.assignment.title || 'ข้อสอบ');
         }
 
-        // Check if already submitted
         if (data.already_submitted && data.previous_score !== null) {
           var notice = document.getElementById('previousScoreNotice');
           var maxS = data.assignment ? (data.assignment.max_score || data.questions.length) : data.questions.length;
           var pct = maxS > 0 ? Math.round((data.previous_score / maxS) * 100) : 0;
+          var statusText = data.grading_status === 'pending' ? ' — 🟡 รอครูตรวจ'
+            : data.grading_status === 'graded' ? ' — ✅ ตรวจแล้ว' : '';
           notice.style.display = 'block';
-          notice.innerHTML =
-            '<div style="display:flex; align-items:center; gap:var(--space-md); flex-wrap:wrap;">' +
-              '<div style="font-size:0.9rem;">⚠️ คุณเคยทำข้อสอบนี้แล้ว ได้ <strong>' + data.previous_score + '/' + maxS + ' (' + pct + '%)</strong> — หากส่งใหม่จะบันทึกคะแนนใหม่ทับของเดิม</div>' +
-            '</div>';
+          notice.innerHTML = '<div style="font-size:.9rem">⚠️ คุณเคยทำข้อสอบนี้แล้ว ได้ <strong>' + data.previous_score + '/' + maxS + ' (' + pct + '%)</strong>' + statusText + ' — หากส่งใหม่จะบันทึกทับ</div>';
         }
 
         quizQuestions = data.questions || [];
-
         if (quizQuestions.length === 0) {
-          document.getElementById('quizArea').innerHTML =
-            '<div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีคำถามในข้อสอบนี้</p></div>';
+          document.getElementById('quizArea').innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีคำถามในข้อสอบนี้</p></div>';
           return;
         }
 
         renderQuiz();
-
-        // Log action
         apiLogAction('open_quiz', 'เปิดข้อสอบ: ' + assignmentId);
-
       } catch (err) {
-        document.getElementById('quizArea').innerHTML =
-          '<div class="empty-state"><div class="empty-icon">⚠️</div><p>' + (err.message || 'โหลดข้อสอบไม่สำเร็จ') + '</p></div>';
+        document.getElementById('quizArea').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>' + (err.message || 'โหลดข้อสอบไม่สำเร็จ') + '</p></div>';
       }
     }
 
@@ -112,88 +97,94 @@
       for (var i = 0; i < quizQuestions.length; i++) {
         var q = quizQuestions[i];
         var qId = q.question_id;
+        var qType = q.question_type || 'mcq';
+        var typeLabel = qType === 'mcq' ? '📝 ปรนัย' : qType === 'essay' ? '✍️ อัตนัย' : '📤 อัพโหลด';
+
         html += '<div class="quiz-question" id="q_' + qId + '">' +
-          '<div class="quiz-question-number">คำถามข้อ ' + (i + 1) + ' จาก ' + quizQuestions.length + '</div>' +
-          '<div class="quiz-question-text">' + escapeHtml(q.question_text) + '</div>' +
-          '<div class="quiz-choices">' +
+          '<div class="quiz-question-number">คำถามข้อ ' + (i+1) + ' จาก ' + quizQuestions.length + ' <span style="float:right;font-size:.8rem;color:var(--text-secondary)">' + typeLabel + ' (' + q.max_points + ' คะแนน)</span></div>' +
+          '<div class="quiz-question-text">' + escapeHtml(q.question_text) + '</div>';
+
+        // Image
+        if (q.image_url) {
+          html += '<img src="' + escapeHtml(q.image_url) + '" class="q-image" onerror="this.style.display=\'none\'" alt="รูปประกอบ">';
+        }
+
+        // Render by type
+        if (qType === 'mcq') {
+          html += '<div class="quiz-choices">' +
             renderChoice(qId, 'A', q.choice_a) +
             renderChoice(qId, 'B', q.choice_b) +
             renderChoice(qId, 'C', q.choice_c) +
-            renderChoice(qId, 'D', q.choice_d) +
-          '</div>' +
-        '</div>';
+            renderChoice(qId, 'D', q.choice_d) + '</div>';
+        } else if (qType === 'essay') {
+          html += '<textarea class="form-textarea essay-input" id="ans_' + qId + '" placeholder="พิมพ์คำตอบ..." oninput="userAnswers[\'' + qId + '\']=this.value"></textarea>';
+        } else if (qType === 'upload') {
+          html += '<input class="form-input upload-input" id="ans_' + qId + '" placeholder="วาง URL ไฟล์ (Google Drive link)" oninput="userAnswers[\'' + qId + '\']=this.value">';
+        }
+
+        // Show feedback if graded
+        if (feedbackData && feedbackData[qId]) {
+          var fb = feedbackData[qId];
+          var ptsClass = fb.points >= fb.max_points ? 'pts-full' : fb.points > 0 ? 'pts-partial' : 'pts-zero';
+          html += '<div class="feedback-box"><div class="fb-label">ผลการตรวจ</div>' +
+            '<span class="pts-badge ' + ptsClass + '">' + fb.points + '/' + fb.max_points + ' คะแนน</span>' +
+            (fb.feedback ? '<div style="margin-top:4px">' + escapeHtml(fb.feedback) + '</div>' : '') + '</div>';
+        }
+
+        html += '</div>';
       }
       document.getElementById('quizArea').innerHTML = html;
       document.getElementById('submitArea').style.display = 'block';
     }
 
     function renderChoice(qId, label, text) {
-      if (!text && text !== 0) return ''; // Skip empty choices
+      if (!text && text !== 0) return '';
       return '<label class="quiz-choice" id="choice_' + qId + '_' + label + '" onclick="selectChoice(\'' + qId + '\', \'' + label + '\')">' +
         '<input type="radio" name="q_' + qId + '" value="' + label + '">' +
         '<div class="quiz-choice-label">' + label + '</div>' +
-        '<div>' + escapeHtml(String(text)) + '</div>' +
-      '</label>';
+        '<div>' + escapeHtml(String(text)) + '</div></label>';
     }
 
     function selectChoice(qId, label) {
       userAnswers[qId] = label;
-
-      // Update UI
       var choices = document.querySelectorAll('#q_' + qId + ' .quiz-choice');
-      for (var i = 0; i < choices.length; i++) {
-        choices[i].classList.remove('selected');
-      }
-      var selected = document.getElementById('choice_' + qId + '_' + label);
-      if (selected) selected.classList.add('selected');
+      for (var i = 0; i < choices.length; i++) choices[i].classList.remove('selected');
+      var sel = document.getElementById('choice_' + qId + '_' + label);
+      if (sel) sel.classList.add('selected');
     }
 
     async function submitQuiz() {
-      // Validate all answered
       var unanswered = [];
       for (var i = 0; i < quizQuestions.length; i++) {
-        if (!userAnswers[quizQuestions[i].question_id]) {
-          unanswered.push(i + 1);
-        }
+        if (!userAnswers[quizQuestions[i].question_id]) unanswered.push(i + 1);
       }
-
       if (unanswered.length > 0) {
         showToast('กรุณาตอบข้อ ' + unanswered.join(', ') + ' ก่อนส่ง', 'error');
-        // Scroll to first unanswered
-        var firstUnanswered = document.getElementById('q_' + quizQuestions[unanswered[0] - 1].question_id);
-        if (firstUnanswered) firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var first = document.getElementById('q_' + quizQuestions[unanswered[0]-1].question_id);
+        if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
       }
 
       var btn = document.getElementById('submitBtn');
-      btn.disabled = true;
-      btn.textContent = 'กำลังตรวจคำตอบ...';
+      btn.disabled = true; btn.textContent = 'กำลังตรวจคำตอบ...';
 
       try {
         var result = await apiSubmitQuiz(assignmentId, userAnswers);
         if (result.status !== 'success') throw new Error(result.message);
 
-        // Hide submit button
         document.getElementById('submitArea').style.display = 'none';
 
-        // Show results on questions
+        // Show MCQ results on questions
         if (result.results) {
           for (var j = 0; j < result.results.length; j++) {
             var r = result.results[j];
+            if (r.question_type !== 'mcq') continue;
             var qEl = document.getElementById('q_' + r.question_id);
             if (!qEl) continue;
-
-            // Mark correct/wrong
-            var allChoices = qEl.querySelectorAll('.quiz-choice');
-            for (var k = 0; k < allChoices.length; k++) {
-              allChoices[k].style.pointerEvents = 'none';
-            }
-
-            // Mark correct answer
+            var allC = qEl.querySelectorAll('.quiz-choice');
+            for (var k = 0; k < allC.length; k++) allC[k].style.pointerEvents = 'none';
             var correctEl = document.getElementById('choice_' + r.question_id + '_' + r.correct_answer);
             if (correctEl) correctEl.classList.add('correct');
-
-            // Mark wrong if different
             if (!r.is_correct && r.user_answer) {
               var wrongEl = document.getElementById('choice_' + r.question_id + '_' + r.user_answer);
               if (wrongEl) wrongEl.classList.add('wrong');
@@ -201,31 +192,28 @@
           }
         }
 
-        // Show result card
         var grade = getGrade(result.percentage);
-        var resultHtml = '<div class="quiz-result" style="margin-top:var(--space-xl); animation: scaleIn 0.5s ease;">' +
-          '<div style="font-size:1rem; color:var(--text-secondary); margin-bottom:var(--space-sm);">ผลการทำข้อสอบ</div>' +
+        var pendingMsg = result.grading_status === 'pending'
+          ? '<div style="margin-top:var(--space-md);color:#f59e0b;font-size:.9rem">🟡 มีข้อเขียนรอครูตรวจ — คะแนนอาจเปลี่ยนแปลง</div>' : '';
+
+        var resultHtml = '<div class="quiz-result" style="margin-top:var(--space-xl);animation:scaleIn .5s ease">' +
+          '<div style="font-size:1rem;color:var(--text-secondary);margin-bottom:var(--space-sm)">ผลการทำข้อสอบ</div>' +
           '<div class="score-display">' + result.score + '/' + result.max_score + '</div>' +
-          '<div style="font-size:1.5rem; margin-top:var(--space-sm);">' + result.percentage + '%</div>' +
-          '<div style="margin-top:var(--space-md);">' +
-            '<span style="font-size:2rem; font-weight:800; color:' + grade.color + ';">' + grade.letter + '</span>' +
-            '<span style="margin-left:var(--space-sm); color:var(--text-secondary);">' + grade.label + '</span>' +
-          '</div>' +
-          '<div style="margin-top:var(--space-xl);">' +
-            '<a href="' + (subjectId ? 'subject.html?id=' + subjectId : 'dashboard.html') + '" class="btn btn-primary">← กลับหน้าวิชา</a>' +
-          '</div>' +
-        '</div>';
+          '<div style="font-size:1.5rem;margin-top:var(--space-sm)">' + result.percentage + '%</div>' +
+          '<div style="margin-top:var(--space-md)">' +
+            '<span style="font-size:2rem;font-weight:800;color:' + grade.color + '">' + grade.letter + '</span>' +
+            '<span style="margin-left:var(--space-sm);color:var(--text-secondary)">' + grade.label + '</span></div>' +
+          pendingMsg +
+          '<div style="margin-top:var(--space-xl)">' +
+            '<a href="' + (subjectId ? 'subject.html?id='+subjectId : 'dashboard.html') + '" class="btn btn-primary">← กลับหน้าวิชา</a></div></div>';
 
         document.getElementById('resultArea').innerHTML = resultHtml;
         document.getElementById('resultArea').style.display = 'block';
         document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
-
         showToast('ส่งคำตอบเรียบร้อย! 🎉', 'success');
-
       } catch (err) {
         showToast(err.message || 'ส่งคำตอบไม่สำเร็จ', 'error');
-        btn.disabled = false;
-        btn.textContent = '📝 ส่งคำตอบ';
+        btn.disabled = false; btn.textContent = '📝 ส่งคำตอบ';
       }
     }
 
