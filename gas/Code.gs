@@ -473,7 +473,7 @@ function handleGetScores(body) {
 }
 
 function handleGetDashboard(body) {
-  return handleAdminGetStudentDetail({ user_id: body.user_id, target_user_id: body.user_id, role: 'admin' }); 
+  return handleAdminGetStudentDetail({ user_id: body.user_id, target_user_id: body.user_id, role: 'student' }); 
 }
 
 function handleGetStudentReport(body) {
