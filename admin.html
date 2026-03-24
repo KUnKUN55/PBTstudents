@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PBT LMS — จัดการระบบ (Admin)</title>
+  <meta name="description" content="Admin Panel สำหรับจัดการวิชา บทเรียน ข้อสอบ และดูคะแนน">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="bg-animated"></div>
+
+  <div class="app-container">
+    <!-- Navbar inserted by JS -->
+
+    <div class="page-header">
+      <h1 class="page-title">⚙️ จัดการระบบ</h1>
+      <p class="page-subtitle">เพิ่ม/แก้ไขวิชา บทเรียน ข้อสอบ และดูคะแนนนักเรียน</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tabSubjects">📚 วิชา</button>
+      <button class="tab-btn" data-tab="tabLessons">📖 บทเรียน</button>
+      <button class="tab-btn" data-tab="tabAssignments">📝 ข้อสอบ</button>
+      <button class="tab-btn" data-tab="tabQuestions">❓ คำถาม</button>
+      <button class="tab-btn" data-tab="tabAllScores">📊 คะแนน</button>
+    </div>
+
+    <!-- ── Tab: Subjects ── -->
+    <div class="tab-content active" id="tabSubjects">
+      <div class="card" style="margin-bottom:var(--space-xl);">
+        <h3 style="font-size:1.1rem; font-weight:600; margin-bottom:var(--space-lg);">เพิ่มวิชาใหม่</h3>
+        <form onsubmit="addSubject(event)">
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">ชื่อวิชา *</label>
+              <input class="form-input" id="subName" required placeholder="เช่น ฟิสิกส์ ม.4">
+            </div>
+            <div class="form-group">
+              <label class="form-label">ไอคอน (emoji)</label>
+              <input class="form-input" id="subIcon" placeholder="เช่น ⚛️" value="📚">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">คำอธิบาย</label>
+            <input class="form-input" id="subDesc" placeholder="คำอธิบายสั้นๆ">
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">สี (hex)</label>
+              <input class="form-input" id="subColor" value="#3b82f6" type="color">
+            </div>
+            <div class="form-group">
+              <label class="form-label">ลำดับ</label>
+              <input class="form-input" id="subOrder" type="number" value="0">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">➕ เพิ่มวิชา</button>
+        </form>
+      </div>
+      <div id="subjectsList"></div>
+    </div>
+
+    <!-- ── Tab: Lessons ── -->
+    <div class="tab-content" id="tabLessons">
+      <div class="card" style="margin-bottom:var(--space-xl);">
+        <h3 style="font-size:1.1rem; font-weight:600; margin-bottom:var(--space-lg);">เพิ่มบทเรียนใหม่</h3>
+        <form onsubmit="addLesson(event)">
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">วิชา *</label>
+              <select class="form-select" id="lessonSubject" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">บท / Chapter</label>
+              <input class="form-input" id="lessonChapter" placeholder="เช่น บทที่ 1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ชื่อบทเรียน *</label>
+            <input class="form-input" id="lessonTitle" required placeholder="ชื่อบทเรียน">
+          </div>
+          <div class="form-group">
+            <label class="form-label">คำอธิบาย / เนื้อหา</label>
+            <textarea class="form-textarea" id="lessonDesc" placeholder="เนื้อหาหรือรายละเอียดบทเรียน"></textarea>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">URL ไฟล์ (Google Drive link)</label>
+              <input class="form-input" id="lessonFile" placeholder="https://drive.google.com/...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">ประเภทไฟล์</label>
+              <select class="form-select" id="lessonFileType">
+                <option value="pdf">📄 PDF</option>
+                <option value="video">🎬 Video</option>
+                <option value="link">🔗 Link</option>
+                <option value="doc">📝 Document</option>
+                <option value="ppt">📊 Presentation</option>
+                <option value="image">🖼️ Image</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ลำดับ</label>
+            <input class="form-input" id="lessonOrder" type="number" value="0">
+          </div>
+          <button type="submit" class="btn btn-primary">➕ เพิ่มบทเรียน</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Tab: Assignments ── -->
+    <div class="tab-content" id="tabAssignments">
+      <div class="card" style="margin-bottom:var(--space-xl);">
+        <h3 style="font-size:1.1rem; font-weight:600; margin-bottom:var(--space-lg);">เพิ่มข้อสอบ / แบบทดสอบ</h3>
+        <form onsubmit="addAssignment(event)">
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">วิชา *</label>
+              <select class="form-select" id="assignSubject" required></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ประเภท</label>
+              <select class="form-select" id="assignType">
+                <option value="quiz">📝 Quiz (ตรวจอัตโนมัติ)</option>
+                <option value="upload">📤 Upload (ส่งงาน)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ชื่อข้อสอบ *</label>
+            <input class="form-input" id="assignTitle" required placeholder="เช่น ข้อสอบ: เซลล์และโครงสร้าง">
+          </div>
+          <div class="form-group">
+            <label class="form-label">คำอธิบาย</label>
+            <input class="form-input" id="assignDesc" placeholder="คำอธิบายข้อสอบ">
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">คะแนนเต็ม</label>
+              <input class="form-input" id="assignMaxScore" type="number" value="10">
+            </div>
+            <div class="form-group">
+              <label class="form-label">กำหนดส่ง (ไม่บังคับ)</label>
+              <input class="form-input" id="assignDue" type="date">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">➕ เพิ่มข้อสอบ</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Tab: Questions ── -->
+    <div class="tab-content" id="tabQuestions">
+      <div class="card" style="margin-bottom:var(--space-xl);">
+        <h3 style="font-size:1.1rem; font-weight:600; margin-bottom:var(--space-lg);">เพิ่มคำถาม (MCQ)</h3>
+        <form onsubmit="addQuestion(event)">
+          <div class="form-group">
+            <label class="form-label">ข้อสอบ *</label>
+            <select class="form-select" id="qAssignment" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">คำถาม *</label>
+            <textarea class="form-textarea" id="qText" required placeholder="พิมพ์คำถาม..."></textarea>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">A *</label>
+              <input class="form-input" id="qA" required placeholder="ตัวเลือก A">
+            </div>
+            <div class="form-group">
+              <label class="form-label">B *</label>
+              <input class="form-input" id="qB" required placeholder="ตัวเลือก B">
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">C</label>
+              <input class="form-input" id="qC" placeholder="ตัวเลือก C (ไม่บังคับ)">
+            </div>
+            <div class="form-group">
+              <label class="form-label">D</label>
+              <input class="form-input" id="qD" placeholder="ตัวเลือก D (ไม่บังคับ)">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">เฉลย (A, B, C, หรือ D) *</label>
+            <select class="form-select" id="qCorrect" required>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">➕ เพิ่มคำถาม</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── Tab: All Scores ── -->
+    <div class="tab-content" id="tabAllScores">
+      <div id="allScoresContainer">
+        <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลด...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (!requireAdmin()) { /* redirects */ }
+
+    var cachedSubjects = [];
+    var cachedAssignments = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+      renderNavbar();
+      initTabs();
+      loadAdminData();
+
+      // Load scores when tab is clicked
+      document.querySelector('[data-tab="tabAllScores"]').addEventListener('click', loadAllScores);
+    });
+
+    async function loadAdminData() {
+      try {
+        // Load subjects
+        var subData = await apiGetSubjects();
+        cachedSubjects = subData.subjects || [];
+        renderSubjectsList(cachedSubjects);
+        populateSubjectDropdowns();
+
+        // Load assignments for question dropdown
+        await loadAssignmentDropdown();
+
+      } catch (err) {
+        showToast('โหลดข้อมูลไม่สำเร็จ: ' + err.message, 'error');
+      }
+    }
+
+    function populateSubjectDropdowns() {
+      var dropdowns = ['lessonSubject', 'assignSubject'];
+      for (var d = 0; d < dropdowns.length; d++) {
+        var select = document.getElementById(dropdowns[d]);
+        if (!select) continue;
+        select.innerHTML = '<option value="">-- เลือกวิชา --</option>';
+        for (var i = 0; i < cachedSubjects.length; i++) {
+          var s = cachedSubjects[i];
+          var opt = document.createElement('option');
+          opt.value = s.subject_id;
+          opt.textContent = (s.icon || '') + ' ' + s.subject_name;
+          select.appendChild(opt);
+        }
+      }
+    }
+
+    async function loadAssignmentDropdown() {
+      var select = document.getElementById('qAssignment');
+      select.innerHTML = '<option value="">-- เลือกข้อสอบ --</option>';
+
+      for (var i = 0; i < cachedSubjects.length; i++) {
+        try {
+          var aData = await apiGetAssignments(cachedSubjects[i].subject_id);
+          var assignments = aData.assignments || [];
+          for (var j = 0; j < assignments.length; j++) {
+            var a = assignments[j];
+            cachedAssignments.push(a);
+            var opt = document.createElement('option');
+            opt.value = a.assignment_id;
+            opt.textContent = cachedSubjects[i].subject_name + ' → ' + a.title;
+            select.appendChild(opt);
+          }
+        } catch (e) { /* skip */ }
+      }
+    }
+
+    function renderSubjectsList(subjects) {
+      var container = document.getElementById('subjectsList');
+      if (subjects.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีวิชา</p></div>';
+        return;
+      }
+
+      var html = '<div class="table-container"><table class="table"><thead><tr>' +
+        '<th>ไอคอน</th><th>ชื่อวิชา</th><th>คำอธิบาย</th><th>บทเรียน</th><th>ข้อสอบ</th><th>ลำดับ</th><th>จัดการ</th>' +
+        '</tr></thead><tbody>';
+
+      for (var i = 0; i < subjects.length; i++) {
+        var s = subjects[i];
+        html += '<tr>' +
+          '<td style="font-size:1.5rem;">' + (s.icon || '📚') + '</td>' +
+          '<td><strong>' + escapeHtml(s.subject_name) + '</strong></td>' +
+          '<td style="color:var(--text-secondary); font-size:0.85rem;">' + escapeHtml(s.description || '-') + '</td>' +
+          '<td><span class="badge badge-blue">' + (s.lesson_count || 0) + '</span></td>' +
+          '<td><span class="badge badge-purple">' + (s.assignment_count || 0) + '</span></td>' +
+          '<td>' + (s.order_index || 0) + '</td>' +
+          '<td><button class="btn btn-danger btn-sm" onclick="deleteItem(\'Subjects\', \'subject_id\', \'' + s.subject_id + '\')">🗑️</button></td>' +
+        '</tr>';
+      }
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    // ── Add Subject ──
+    async function addSubject(e) {
+      e.preventDefault();
+      var btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+
+      try {
+        var result = await apiAdminAddSubject({
+          subject_name: document.getElementById('subName').value.trim(),
+          icon: document.getElementById('subIcon').value.trim() || '📚',
+          color: document.getElementById('subColor').value,
+          description: document.getElementById('subDesc').value.trim(),
+          order_index: document.getElementById('subOrder').value
+        });
+
+        if (result.status === 'success') {
+          showToast('เพิ่มวิชาเรียบร้อย! ✅', 'success');
+          e.target.reset();
+          document.getElementById('subIcon').value = '📚';
+          document.getElementById('subColor').value = '#3b82f6';
+          loadAdminData();
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (err) {
+        showToast(err.message || 'เพิ่มวิชาไม่สำเร็จ', 'error');
+      }
+      btn.disabled = false;
+    }
+
+    // ── Add Lesson ──
+    async function addLesson(e) {
+      e.preventDefault();
+      var btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+
+      try {
+        var result = await apiAdminAddLesson({
+          subject_id: document.getElementById('lessonSubject').value,
+          title: document.getElementById('lessonTitle').value.trim(),
+          description: document.getElementById('lessonDesc').value.trim(),
+          file_url: document.getElementById('lessonFile').value.trim(),
+          file_type: document.getElementById('lessonFileType').value,
+          chapter: document.getElementById('lessonChapter').value.trim(),
+          order_index: document.getElementById('lessonOrder').value
+        });
+
+        if (result.status === 'success') {
+          showToast('เพิ่มบทเรียนเรียบร้อย! ✅', 'success');
+          e.target.reset();
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (err) {
+        showToast(err.message || 'เพิ่มบทเรียนไม่สำเร็จ', 'error');
+      }
+      btn.disabled = false;
+    }
+
+    // ── Add Assignment ──
+    async function addAssignment(e) {
+      e.preventDefault();
+      var btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+
+      try {
+        var result = await apiAdminAddAssignment({
+          subject_id: document.getElementById('assignSubject').value,
+          title: document.getElementById('assignTitle').value.trim(),
+          type: document.getElementById('assignType').value,
+          max_score: document.getElementById('assignMaxScore').value,
+          due_date: document.getElementById('assignDue').value,
+          description: document.getElementById('assignDesc').value.trim()
+        });
+
+        if (result.status === 'success') {
+          showToast('เพิ่มข้อสอบเรียบร้อย! ✅', 'success');
+          e.target.reset();
+          loadAssignmentDropdown();
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (err) {
+        showToast(err.message || 'เพิ่มข้อสอบไม่สำเร็จ', 'error');
+      }
+      btn.disabled = false;
+    }
+
+    // ── Add Question ──
+    async function addQuestion(e) {
+      e.preventDefault();
+      var btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+
+      try {
+        var result = await apiAdminAddQuestion({
+          assignment_id: document.getElementById('qAssignment').value,
+          question_text: document.getElementById('qText').value.trim(),
+          choice_a: document.getElementById('qA').value.trim(),
+          choice_b: document.getElementById('qB').value.trim(),
+          choice_c: document.getElementById('qC').value.trim(),
+          choice_d: document.getElementById('qD').value.trim(),
+          correct_answer: document.getElementById('qCorrect').value
+        });
+
+        if (result.status === 'success') {
+          showToast('เพิ่มคำถามเรียบร้อย! ✅', 'success');
+          // Clear question fields only, keep assignment selected
+          document.getElementById('qText').value = '';
+          document.getElementById('qA').value = '';
+          document.getElementById('qB').value = '';
+          document.getElementById('qC').value = '';
+          document.getElementById('qD').value = '';
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (err) {
+        showToast(err.message || 'เพิ่มคำถามไม่สำเร็จ', 'error');
+      }
+      btn.disabled = false;
+    }
+
+    // ── Load All Scores ──
+    async function loadAllScores() {
+      var container = document.getElementById('allScoresContainer');
+      container.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลดคะแนน...</p></div>';
+
+      try {
+        var result = await apiAdminGetAllScores();
+        if (result.status !== 'success') throw new Error(result.message);
+
+        var scores = result.scores || [];
+        if (scores.length === 0) {
+          container.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><p>ยังไม่มีคะแนน</p></div>';
+          return;
+        }
+
+        var html = '<div class="table-container"><table class="table"><thead><tr>' +
+          '<th>นักเรียน</th><th>วิชา</th><th>ข้อสอบ</th><th>คะแนน</th><th>เปอร์เซ็นต์</th><th>เกรด</th><th>ทำเมื่อ</th>' +
+          '</tr></thead><tbody>';
+
+        for (var i = 0; i < scores.length; i++) {
+          var s = scores[i];
+          var grade = getGrade(s.percentage);
+          html += '<tr>' +
+            '<td><strong>' + escapeHtml(s.user_name) + '</strong></td>' +
+            '<td>' + escapeHtml(s.subject_name) + '</td>' +
+            '<td>' + escapeHtml(s.assignment_title) + '</td>' +
+            '<td>' + s.score + '/' + s.max_score + '</td>' +
+            '<td>' + s.percentage + '%</td>' +
+            '<td><span style="color:' + grade.color + '; font-weight:700;">' + grade.letter + '</span></td>' +
+            '<td>' + formatDate(s.submitted_at) + '</td>' +
+          '</tr>';
+        }
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+
+      } catch (err) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>' + (err.message || 'โหลดคะแนนไม่สำเร็จ') + '</p></div>';
+      }
+    }
+
+    // ── Delete Item ──
+    async function deleteItem(sheetName, idField, idValue) {
+      if (!confirm('ยืนยันลบข้อมูลนี้?')) return;
+
+      try {
+        var result = await apiAdminDeleteItem({
+          sheet_name: sheetName,
+          id_field: idField,
+          id_value: idValue
+        });
+
+        if (result.status === 'success') {
+          showToast('ลบเรียบร้อย! ✅', 'success');
+          loadAdminData();
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (err) {
+        showToast(err.message || 'ลบไม่สำเร็จ', 'error');
+      }
+    }
+
+    function getGrade(pct) {
+      if (pct >= 80) return { letter: 'A', label: 'ยอดเยี่ยม', color: '#10b981' };
+      if (pct >= 70) return { letter: 'B+', label: 'ดีมาก', color: '#06b6d4' };
+      if (pct >= 60) return { letter: 'B', label: 'ดี', color: '#3b82f6' };
+      if (pct >= 50) return { letter: 'C+', label: 'ค่อนข้างดี', color: '#f59e0b' };
+      if (pct >= 40) return { letter: 'C', label: 'พอใช้', color: '#f97316' };
+      return { letter: 'D', label: 'ต้องปรับปรุง', color: '#ef4444' };
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

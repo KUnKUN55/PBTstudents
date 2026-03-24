@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PBT LMS — บทเรียน</title>
+  <meta name="description" content="ดูเนื้อหาบทเรียนและดาวน์โหลดไฟล์">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="bg-animated"></div>
+
+  <div class="app-container">
+    <!-- Navbar inserted by JS -->
+
+    <div class="lesson-viewer">
+      <!-- Back Link -->
+      <a href="#" id="backLink" style="font-size:0.85rem; color:var(--text-secondary); display:inline-flex; align-items:center; gap:4px; margin-bottom:var(--space-lg);">← กลับหน้าวิชา</a>
+
+      <!-- Lesson Header -->
+      <div class="page-header">
+        <h1 class="page-title" id="lessonTitle">กำลังโหลด...</h1>
+        <div class="lesson-meta" id="lessonMeta"></div>
+      </div>
+
+      <!-- Lesson Content -->
+      <div class="lesson-content" id="lessonContent">
+        <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลดเนื้อหา...</p></div>
+      </div>
+
+      <!-- Files Section -->
+      <div id="filesSection" style="display:none; margin-top:var(--space-xl);">
+        <h3 style="font-size:1.1rem; font-weight:600; margin-bottom:var(--space-md);">📁 ไฟล์ประกอบการเรียน</h3>
+        <div class="lesson-files" id="filesContainer"></div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex; gap:var(--space-md); margin-top:var(--space-xl); flex-wrap:wrap;" id="lessonActions">
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (!requireAuth()) { /* redirects */ }
+
+    var lessonId = getParam('id');
+    var subjectId = getParam('subject');
+    if (!lessonId) window.location.href = 'dashboard.html';
+
+    // Set back link
+    document.getElementById('backLink').href = subjectId ? 'subject.html?id=' + subjectId : 'dashboard.html';
+
+    document.addEventListener('DOMContentLoaded', function() {
+      renderNavbar();
+      loadLesson();
+    });
+
+    async function loadLesson() {
+      try {
+        // Load lessons for this subject to find our lesson
+        var sid = subjectId;
+        if (!sid) {
+          // Try to find subject from all subjects
+          var allSubjects = await apiGetSubjects();
+          if (allSubjects.status !== 'success') throw new Error('โหลดข้อมูลวิชาไม่สำเร็จ');
+          // We need to search — load lessons for each subject
+          for (var i = 0; i < allSubjects.subjects.length; i++) {
+            var lessonsData = await apiGetLessons(allSubjects.subjects[i].subject_id);
+            if (lessonsData.lessons) {
+              var found = lessonsData.lessons.find(function(l) { return l.lesson_id === lessonId; });
+              if (found) {
+                sid = allSubjects.subjects[i].subject_id;
+                document.getElementById('backLink').href = 'subject.html?id=' + sid;
+                renderLessonData(found);
+                return;
+              }
+            }
+          }
+          throw new Error('ไม่พบบทเรียนนี้');
+        }
+
+        var lessonsData = await apiGetLessons(sid);
+        if (lessonsData.status !== 'success') throw new Error(lessonsData.message);
+
+        var lesson = (lessonsData.lessons || []).find(function(l) { return l.lesson_id === lessonId; });
+        if (!lesson) throw new Error('ไม่พบบทเรียนนี้');
+
+        renderLessonData(lesson);
+
+        // Log view
+        apiLogAction('view_lesson', 'เปิดดูบทเรียน: ' + lesson.title);
+
+      } catch (err) {
+        document.getElementById('lessonContent').innerHTML =
+          '<div class="empty-state"><div class="empty-icon">⚠️</div><p>' + (err.message || 'โหลดบทเรียนไม่สำเร็จ') + '</p></div>';
+      }
+    }
+
+    function renderLessonData(lesson) {
+      document.getElementById('lessonTitle').textContent = lesson.title;
+      document.title = 'PBT LMS — ' + lesson.title;
+
+      // Meta info
+      var metaHtml = '';
+      if (lesson.chapter) {
+        metaHtml += '<div class="lesson-meta-item">📂 ' + escapeHtml(lesson.chapter) + '</div>';
+      }
+      if (lesson.file_type) {
+        metaHtml += '<div class="lesson-meta-item">' + getFileIcon(lesson.file_type) + ' ' + lesson.file_type.toUpperCase() + '</div>';
+      }
+      if (lesson.created_at) {
+        metaHtml += '<div class="lesson-meta-item">📅 ' + formatDate(lesson.created_at) + '</div>';
+      }
+      var statusText = lesson.completed ? '✅ เรียนแล้ว' : '📋 ยังไม่ได้เรียน';
+      metaHtml += '<div class="lesson-meta-item">' + statusText + '</div>';
+      document.getElementById('lessonMeta').innerHTML = metaHtml;
+
+      // Content
+      var contentHtml = '';
+      if (lesson.description) {
+        contentHtml = '<p style="line-height:1.8;">' + escapeHtml(lesson.description).replace(/\n/g, '<br>') + '</p>';
+      } else {
+        contentHtml = '<p style="color:var(--text-muted);">ไม่มีเนื้อหาเพิ่มเติม — กรุณาดาวน์โหลดไฟล์ด้านล่าง</p>';
+      }
+      document.getElementById('lessonContent').innerHTML = contentHtml;
+
+      // Files
+      if (lesson.file_url) {
+        var filesSection = document.getElementById('filesSection');
+        filesSection.style.display = 'block';
+        var icon = getFileIcon(lesson.file_type);
+        var bgColor = getFileIconBg(lesson.file_type);
+
+        document.getElementById('filesContainer').innerHTML =
+          '<div class="file-item">' +
+            '<div class="file-info">' +
+              '<div class="file-icon" style="background:' + bgColor + '">' + icon + '</div>' +
+              '<div>' +
+                '<div style="font-weight:600;">' + escapeHtml(lesson.title) + '</div>' +
+                '<div style="font-size:0.8rem; color:var(--text-muted);">' + (lesson.file_type || 'file').toUpperCase() + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<a href="' + lesson.file_url + '" target="_blank" rel="noopener" class="btn btn-primary btn-sm">' +
+              '📥 ดาวน์โหลด / เปิดไฟล์' +
+            '</a>' +
+          '</div>';
+      }
+
+      // Actions
+      var actionsHtml = '';
+      if (!lesson.completed) {
+        actionsHtml += '<button class="btn btn-success" onclick="markComplete()" id="completeBtn">✅ เรียนจบแล้ว — บันทึกความก้าวหน้า</button>';
+      } else {
+        actionsHtml += '<div class="badge badge-green" style="padding:8px 16px; font-size:0.9rem;">✅ เรียนจบบทเรียนนี้แล้ว</div>';
+      }
+      document.getElementById('lessonActions').innerHTML = actionsHtml;
+    }
+
+    async function markComplete() {
+      var btn = document.getElementById('completeBtn');
+      if (!btn) return;
+      btn.disabled = true;
+      btn.textContent = 'กำลังบันทึก...';
+
+      try {
+        var result = await apiMarkLessonComplete(lessonId);
+        if (result.status === 'success') {
+          showToast('บันทึกความก้าวหน้าเรียบร้อย! 🎉', 'success');
+          document.getElementById('lessonActions').innerHTML =
+            '<div class="badge badge-green" style="padding:8px 16px; font-size:0.9rem;">✅ เรียนจบบทเรียนนี้แล้ว</div>';
+        } else {
+          throw new Error(result.message);
+        }
+      } catch (err) {
+        showToast(err.message || 'บันทึกไม่สำเร็จ', 'error');
+        btn.disabled = false;
+        btn.textContent = '✅ เรียนจบแล้ว — บันทึกความก้าวหน้า';
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

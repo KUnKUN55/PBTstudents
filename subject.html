@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PBT LMS — วิชา</title>
+  <meta name="description" content="รายละเอียดวิชาและบทเรียน">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="bg-animated"></div>
+
+  <div class="app-container">
+    <!-- Navbar inserted by JS -->
+
+    <!-- Subject Header -->
+    <div class="page-header" id="subjectHeader">
+      <a href="dashboard.html" style="font-size:0.85rem; color:var(--text-secondary); display:inline-flex; align-items:center; gap:4px; margin-bottom:var(--space-sm);">← กลับหน้าหลัก</a>
+      <h1 class="page-title" id="subjectName">กำลังโหลด...</h1>
+      <p class="page-subtitle" id="subjectDesc"></p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tabLessons">📖 บทเรียน</button>
+      <button class="tab-btn" data-tab="tabAssignments">📝 ข้อสอบ / แบบทดสอบ</button>
+      <button class="tab-btn" data-tab="tabScores">📊 คะแนนของฉัน</button>
+    </div>
+
+    <!-- Tab: Lessons -->
+    <div class="tab-content active" id="tabLessons">
+      <div id="lessonsContainer">
+        <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลด...</p></div>
+      </div>
+    </div>
+
+    <!-- Tab: Assignments -->
+    <div class="tab-content" id="tabAssignments">
+      <div id="assignmentsContainer">
+        <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลด...</p></div>
+      </div>
+    </div>
+
+    <!-- Tab: Scores -->
+    <div class="tab-content" id="tabScores">
+      <div id="scoresContainer">
+        <div class="empty-state"><div class="spinner" style="margin:0 auto;"></div><p style="margin-top:var(--space-md);">กำลังโหลด...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (!requireAuth()) { /* redirects */ }
+
+    var subjectId = getParam('id');
+    if (!subjectId) window.location.href = 'dashboard.html';
+
+    document.addEventListener('DOMContentLoaded', function() {
+      renderNavbar();
+      initTabs();
+      loadSubjectData();
+    });
+
+    async function loadSubjectData() {
+      try {
+        // Load subject info from subjects list
+        var subjectsData = await apiGetSubjects();
+        if (subjectsData.status === 'success') {
+          var subject = subjectsData.subjects.find(function(s) { return s.subject_id === subjectId; });
+          if (subject) {
+            var icon = subject.icon || getSubjectIcon(subject.subject_name);
+            document.getElementById('subjectName').textContent = icon + ' ' + subject.subject_name;
+            document.getElementById('subjectDesc').textContent = subject.description || '';
+            document.title = 'PBT LMS — ' + subject.subject_name;
+          }
+        }
+
+        // Load lessons, assignments, scores in parallel
+        var results = await Promise.all([
+          apiGetLessons(subjectId),
+          apiGetAssignments(subjectId),
+          apiGetScores()
+        ]);
+
+        renderLessons(results[0].lessons || []);
+        renderAssignments(results[1].assignments || []);
+        renderScores(results[2].scores || []);
+
+      } catch (err) {
+        showToast(err.message || 'โหลดข้อมูลไม่สำเร็จ', 'error');
+      }
+    }
+
+    function renderLessons(lessons) {
+      var container = document.getElementById('lessonsContainer');
+      if (lessons.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีบทเรียนในวิชานี้</p></div>';
+        return;
+      }
+
+      // Group by chapter
+      var chapters = {};
+      for (var i = 0; i < lessons.length; i++) {
+        var ch = lessons[i].chapter || 'ทั่วไป';
+        if (!chapters[ch]) chapters[ch] = [];
+        chapters[ch].push(lessons[i]);
+      }
+
+      var html = '';
+      for (var chapterName in chapters) {
+        html += '<h3 style="font-size:1rem; font-weight:600; margin-bottom:var(--space-md); color:var(--text-secondary);">📂 ' + escapeHtml(chapterName) + '</h3>';
+        var chLessons = chapters[chapterName];
+        for (var j = 0; j < chLessons.length; j++) {
+          var l = chLessons[j];
+          var statusBadge = l.completed
+            ? '<span class="badge badge-green">✅ เรียนแล้ว</span>'
+            : '<span class="badge badge-orange">📋 ยังไม่ได้เรียน</span>';
+
+          html += '<div class="card card-clickable" onclick="goToLesson(\'' + l.lesson_id + '\')" style="margin-bottom:var(--space-md);">' +
+            '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-sm);">' +
+              '<div>' +
+                '<div class="card-title">' + getFileIcon(l.file_type) + ' ' + escapeHtml(l.title) + '</div>' +
+                '<div class="card-desc">' + escapeHtml(l.description || '') + '</div>' +
+              '</div>' +
+              '<div>' + statusBadge + '</div>' +
+            '</div>' +
+          '</div>';
+        }
+      }
+      container.innerHTML = html;
+    }
+
+    function renderAssignments(assignments) {
+      var container = document.getElementById('assignmentsContainer');
+      if (assignments.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>ยังไม่มีข้อสอบในวิชานี้</p></div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < assignments.length; i++) {
+        var a = assignments[i];
+        var typeLabel = a.type === 'quiz' ? '📝 แบบทดสอบ' : '📤 ส่งงาน';
+        var scoreBadge = '';
+        if (a.submitted && a.user_score !== null && a.user_score !== undefined) {
+          var pct = a.max_score > 0 ? Math.round((a.user_score / a.max_score) * 100) : 0;
+          var badgeClass = pct >= 60 ? 'badge-green' : pct >= 40 ? 'badge-orange' : 'badge-red';
+          scoreBadge = '<span class="badge ' + badgeClass + '">' + a.user_score + '/' + a.max_score + ' (' + pct + '%)</span>';
+        } else {
+          scoreBadge = '<span class="badge badge-blue">ยังไม่ได้ทำ</span>';
+        }
+
+        html += '<div class="card card-clickable" onclick="goToAssignment(\'' + a.assignment_id + '\')" style="margin-bottom:var(--space-md);">' +
+          '<div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--space-sm);">' +
+            '<div>' +
+              '<div class="card-title">' + escapeHtml(a.title) + '</div>' +
+              '<div class="card-desc">' + typeLabel + (a.description ? ' — ' + escapeHtml(a.description) : '') + '</div>' +
+            '</div>' +
+            '<div style="display:flex; gap:var(--space-sm); align-items:center;">' +
+              scoreBadge +
+              '<span style="font-size:1.2rem;">→</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+      container.innerHTML = html;
+    }
+
+    function renderScores(allScores) {
+      // Filter scores for this subject
+      var scores = allScores.filter(function(s) { return s.subject_id === subjectId; });
+      var container = document.getElementById('scoresContainer');
+
+      if (scores.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><p>ยังไม่มีคะแนนในวิชานี้</p></div>';
+        return;
+      }
+
+      var html = '<div class="table-container"><table class="table">' +
+        '<thead><tr><th>ข้อสอบ</th><th>คะแนน</th><th>เปอร์เซ็นต์</th><th>เกรด</th><th>ทำเมื่อ</th></tr></thead><tbody>';
+
+      var totalScore = 0;
+      var totalMax = 0;
+
+      for (var i = 0; i < scores.length; i++) {
+        var s = scores[i];
+        var pct = s.max_score > 0 ? Math.round((s.score / s.max_score) * 100) : 0;
+        var grade = getGrade(pct);
+        totalScore += Number(s.score) || 0;
+        totalMax += Number(s.max_score) || 0;
+
+        html += '<tr>' +
+          '<td>' + escapeHtml(s.assignment_title || '-') + '</td>' +
+          '<td><strong>' + s.score + '/' + s.max_score + '</strong></td>' +
+          '<td>' + pct + '%</td>' +
+          '<td><span style="color:' + grade.color + '; font-weight:700;">' + grade.letter + '</span></td>' +
+          '<td>' + formatDate(s.submitted_at) + '</td>' +
+        '</tr>';
+      }
+
+      // Summary row
+      var avgPct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+      var avgGrade = getGrade(avgPct);
+
+      html += '</tbody><tfoot><tr style="font-weight:700;">' +
+        '<td>รวม / เฉลี่ย</td>' +
+        '<td>' + totalScore + '/' + totalMax + '</td>' +
+        '<td>' + avgPct + '%</td>' +
+        '<td><span style="color:' + avgGrade.color + ';">' + avgGrade.letter + ' — ' + avgGrade.label + '</span></td>' +
+        '<td></td>' +
+      '</tr></tfoot></table></div>';
+
+      container.innerHTML = html;
+    }
+
+    function getGrade(pct) {
+      if (pct >= 80) return { letter: 'A', label: 'ยอดเยี่ยม', color: '#10b981' };
+      if (pct >= 70) return { letter: 'B+', label: 'ดีมาก', color: '#06b6d4' };
+      if (pct >= 60) return { letter: 'B', label: 'ดี', color: '#3b82f6' };
+      if (pct >= 50) return { letter: 'C+', label: 'ค่อนข้างดี', color: '#f59e0b' };
+      if (pct >= 40) return { letter: 'C', label: 'พอใช้', color: '#f97316' };
+      return { letter: 'D', label: 'ต้องปรับปรุง', color: '#ef4444' };
+    }
+
+    function goToLesson(lessonId) {
+      window.location.href = 'lesson.html?id=' + lessonId + '&subject=' + subjectId;
+    }
+
+    function goToAssignment(assignmentId) {
+      window.location.href = 'assignment.html?id=' + assignmentId + '&subject=' + subjectId;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PBT LMS — แดชบอร์ด</title>
+  <meta name="description" content="แดชบอร์ดสรุปผลการเรียนและวิชาทั้งหมด">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="bg-animated"></div>
+
+  <div class="app-container">
+    <!-- Navbar inserted by JS -->
+
+    <div class="page-header" id="welcomeHeader">
+      <h1 class="page-title">สวัสดี 👋</h1>
+      <p class="page-subtitle">ยินดีต้อนรับสู่ระบบติวเตอร์ส่วนตัว</p>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="grid-4 stagger" id="statsGrid" style="margin-bottom:var(--space-2xl)">
+      <div class="stat-card animate-in">
+        <div class="stat-value" id="statAvg">—</div>
+        <div class="stat-label">⭐ เกรดเฉลี่ย</div>
+      </div>
+      <div class="stat-card animate-in">
+        <div class="stat-value" id="statScore">—</div>
+        <div class="stat-label">📝 คะแนนรวม</div>
+      </div>
+      <div class="stat-card animate-in">
+        <div class="stat-value" id="statAssignment">—</div>
+        <div class="stat-label">✅ ข้อสอบที่ทำแล้ว</div>
+      </div>
+      <div class="stat-card animate-in">
+        <div class="stat-value" id="statLesson">—</div>
+        <div class="stat-label">📖 บทเรียนที่เรียนแล้ว</div>
+      </div>
+    </div>
+
+    <!-- Grade Card -->
+    <div class="card" id="gradeCard" style="margin-bottom:var(--space-2xl); display:none;">
+      <div style="display:flex; align-items:center; gap:var(--space-xl); flex-wrap:wrap;">
+        <div style="text-align:center;">
+          <div id="gradeLetter" style="font-size:3.5rem; font-weight:800; line-height:1;">—</div>
+          <div id="gradeLabel" style="font-size:0.9rem; color:var(--text-secondary); margin-top:4px;">—</div>
+        </div>
+        <div style="flex:1; min-width:200px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+            <span style="font-size:0.85rem; color:var(--text-secondary);">ผลการเรียนรวม</span>
+            <span style="font-size:0.85rem; font-weight:600;" id="gradePercent">0%</span>
+          </div>
+          <div class="progress-bar" style="height:12px;">
+            <div class="progress-fill" id="gradeProgressBar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subjects -->
+    <h2 style="font-size:1.3rem; font-weight:700; margin-bottom:var(--space-lg);">📚 วิชาที่เรียน</h2>
+    <div class="grid-3 stagger" id="subjectsGrid">
+      <div class="empty-state" style="grid-column: 1/-1;">
+        <div class="spinner" style="margin:0 auto;"></div>
+        <p style="margin-top:var(--space-md);">กำลังโหลด...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    if (!requireAuth()) { /* redirects */ }
+
+    var currentUser = getUser();
+
+    document.addEventListener('DOMContentLoaded', function() {
+      renderNavbar();
+
+      // Welcome message
+      var header = document.getElementById('welcomeHeader');
+      header.querySelector('.page-title').textContent = 'สวัสดี, ' + (currentUser.name || 'ผู้ใช้') + ' 👋';
+
+      loadDashboard();
+    });
+
+    async function loadDashboard() {
+      try {
+        var data = await apiGetDashboard();
+        if (data.status !== 'success') throw new Error(data.message);
+
+        var stats = data.stats;
+
+        // Animate stats
+        animateNumber(document.getElementById('statAvg'), stats.avg_percent);
+        document.getElementById('statAvg').dataset.suffix = '%';
+        animateNumber(document.getElementById('statScore'), stats.total_score);
+        animateNumber(document.getElementById('statAssignment'), stats.completed_assignments);
+        animateNumber(document.getElementById('statLesson'), stats.completed_lessons);
+
+        // After animation, add % suffix
+        setTimeout(function() {
+          document.getElementById('statAvg').textContent = stats.avg_percent + '%';
+        }, 1100);
+
+        // Grade card
+        if (stats.grade) {
+          var gradeCard = document.getElementById('gradeCard');
+          gradeCard.style.display = 'block';
+          var gradeLetter = document.getElementById('gradeLetter');
+          gradeLetter.textContent = stats.grade.letter;
+          gradeLetter.style.color = stats.grade.color;
+          document.getElementById('gradeLabel').textContent = stats.grade.label;
+          document.getElementById('gradePercent').textContent = stats.avg_percent + '%';
+          setTimeout(function() {
+            document.getElementById('gradeProgressBar').style.width = stats.avg_percent + '%';
+          }, 300);
+        }
+
+        // Subjects
+        renderSubjects(data.subjects || []);
+
+      } catch (err) {
+        document.getElementById('subjectsGrid').innerHTML =
+          '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">⚠️</div><p>' + (err.message || 'โหลดข้อมูลไม่สำเร็จ') + '</p></div>';
+      }
+    }
+
+    function renderSubjects(subjects) {
+      var grid = document.getElementById('subjectsGrid');
+
+      if (subjects.length === 0) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">📭</div><p>ยังไม่มีวิชาในระบบ</p></div>';
+        return;
+      }
+
+      var html = '';
+      for (var i = 0; i < subjects.length; i++) {
+        var s = subjects[i];
+        var icon = s.icon || getSubjectIcon(s.subject_name);
+        var color = s.color || getSubjectColor(i);
+        html += '<div class="card card-clickable animate-in" onclick="goToSubject(\'' + s.subject_id + '\')" style="border-left:3px solid ' + color + ';">' +
+          '<div class="card-header">' +
+            '<div class="card-icon" style="background:' + color + '20; font-size:1.8rem;">' + icon + '</div>' +
+          '</div>' +
+          '<div class="card-title">' + escapeHtml(s.subject_name) + '</div>' +
+          '<div class="card-desc">' + escapeHtml(s.description || '') + '</div>' +
+          '<div style="display:flex; gap:var(--space-md); margin-top:var(--space-md);">' +
+            '<span class="badge badge-blue">' + (s.lesson_count || 0) + ' บทเรียน</span>' +
+            '<span class="badge badge-purple">' + (s.assignment_count || 0) + ' ข้อสอบ</span>' +
+          '</div>' +
+        '</div>';
+      }
+      grid.innerHTML = html;
+    }
+
+    function goToSubject(subjectId) {
+      window.location.href = 'subject.html?id=' + subjectId;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
